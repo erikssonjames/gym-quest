@@ -6,7 +6,7 @@ import { api,  } from '@/trpc/react';
 import { STANDARD_BORDER_RADIUS, STANDARD_COLOR_THEME, type BORDER_RADIUS, type COLOR_THEMES } from '@/variables/settings';
 import { useQueryClient } from '@tanstack/react-query';
 import { getQueryKey } from '@trpc/react-query';
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
 interface ThemeContextType extends Partial<NewUserSettings> {
     updateUserSettings: (userSettings: Partial<NewUserSettings>) => void;
@@ -55,11 +55,19 @@ export const UserSettingsProvider = (
   const theme = user?.userSettings?.colorTheme ?? initialTheme
   const borderRadius = user?.userSettings?.borderRadius ?? initialBorderRadius
 
+  useEffect(() => {
+    const htmlEl = document.querySelector('html')
+    if (htmlEl) {
+      const isDark = htmlEl.classList.contains("dark")
+      htmlEl.className = ''
+      htmlEl.classList.add(theme, borderRadius)
+      if (isDark) htmlEl.classList.add("dark")
+    }
+  }, [theme, borderRadius])
+
   return (
     <ThemeContext.Provider value={{ ...(user?.userSettings ?? {}), updateUserSettings }}>
-        <section className={`${theme} ${borderRadius}`}>
-            {children}
-        </section>
+      {children}
     </ThemeContext.Provider>
   );
 };

@@ -9,9 +9,7 @@ export default function LinkNavigation () {
     const pathname = usePathname()
 
     return (
-        <nav
-            className="grid gap-4 text-sm text-muted-foreground" x-chunk="dashboard-04-chunk-0"
-        >
+        <nav className="grid gap-4 text-sm text-muted-foreground">
             <Link 
                 href="/user/settings" 
                 className={pathname === "/user/settings" ? activeClass : ''}

@@ -5,12 +5,17 @@ import { env } from "@/env";
 
 // Schemas
 import * as userSchema from "./schema/user";
-import * as postsSchema from "./schema/posts";
+import * as bodySchema from "./schema/body"
+import * as exerciseSchema from "./schema/exercise"
+import * as workoutSchema from "./schema/workout"
+
 
 // Combined Schema
 const schema = {
     ...userSchema,
-    ...postsSchema
+    ...bodySchema,
+    ...exerciseSchema,
+    ...workoutSchema
 }
 
 const connectionString = env.SUPABASE_URI;

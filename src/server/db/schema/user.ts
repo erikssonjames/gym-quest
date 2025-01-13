@@ -136,6 +136,17 @@ export const verificationQueue = pgTable("verificationQueue", {
   hashKey: varchar("hashKey").unique().notNull()
 });
 
+export const waitlists = pgTable("waitlist", {
+  email: varchar("email", { length: 255 })
+    .unique()
+    .primaryKey()
+    .notNull(),
+  timeSubmitted: timestamp('timeSubmitted', {
+    mode: 'date',
+    withTimezone: true
+  }).defaultNow().notNull()
+})
+
 export type NewUserSettings = typeof userSettings.$inferInsert
 
 export type NewUser = typeof users.$inferInsert

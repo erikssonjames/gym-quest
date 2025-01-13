@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { type MotionValue, motion, useScroll, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { IceCream2 } from "lucide-react";
 
 export const MacbookScroll = ({
@@ -104,7 +103,6 @@ export const Lid = ({
   scaleY,
   rotate,
   translate,
-  src,
 }: {
   scaleX: MotionValue<number>;
   scaleY: MotionValue<number>;
@@ -145,12 +143,6 @@ export const Lid = ({
         className="h-96 w-[32rem] absolute inset-0 bg-[#010101] rounded-2xl p-2"
       >
         <div className="absolute inset-0 bg-[#272729] rounded-lg" />
-        <Image
-          src={src!}
-          alt="aceternity logo"
-          fill
-          className="object-cover object-left-top absolute rounded-lg inset-0 h-full w-full"
-        />
       </motion.div>
     </div>
   );

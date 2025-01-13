@@ -33,7 +33,7 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning suppressContentEditableWarning>
       <body
         className={cn(
           'flex flex-col w-full min-h-screen bg-background font-sans antialiased standard medium_radius',

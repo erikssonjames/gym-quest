@@ -1,9 +1,46 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/components/ui/use-toast'
+import { api } from '@/trpc/react'
+import { TRPCClientError } from '@trpc/client'
 import { motion } from 'framer-motion'
+import { Check, LoaderCircle, SendHorizontal } from 'lucide-react'
+import { useState } from 'react'
 
 export default function WelcomeText() {
+  const { toast } = useToast()
+  const [email, setEmail] = useState<string>('')
+  const { mutateAsync, variables, isPending, isSuccess } = api.user.joinWaitlist.useMutation()
+
+  const onWaitlistSubmit = async () => {
+    if (!isValidEmail(email)) return
+
+    try {
+      await mutateAsync({ email })
+
+      toast({
+        title: 'Success',
+        description: 'You have succesfully joined the waiting list!',
+      })
+    } catch (e) {
+      if (e instanceof TRPCClientError) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          variant: 'destructive'
+        })
+      }
+    }
+  }
+
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   return (
     <div className="flex justify-start flex-col">
       <h1 className="text-7xl text-primary font-bold">Working out,</h1>
@@ -55,9 +92,50 @@ export default function WelcomeText() {
       </motion.div>
 
       <div className='flex gap-3 mt-10'>
-        <Button className='px-10'>Get started today</Button>
+        <div className='relative'>
+          <Button disabled className='px-10'>Get started today</Button>
+          <div className='absolute top-8 left-2'>
+            <p className='text-xs text-primary bg-primary-foreground py-1 px-3 rounded-md w-fit'>Coming soon ✨</p>
+            <div className='ms-2 mt-1 flex w-72'>
+              <svg className='w-10 h-20' viewBox='0 0 40 80'>
+                <path fill='none' stroke="#9d31ff" strokeWidth='3px' d="M 5,0 V 55 Q 5,70 20,70 H 35,70" />
+              </svg>
+              <div className="w-full max-w-sm items-center self-end ms-2 mt-4">
+                <Label htmlFor="email">Email</Label>
+                <div className='relative'>
+                  <Input 
+                    type="email" id="email" placeholder="Join waitlist" className='py-4 ps-4 h-12 rounded-lg'
+                    value={email} onChange={e => setEmail(e.target.value)}
+                  />
+                  {isValidEmail(email) && (
+                    <Button 
+                      onClick={onWaitlistSubmit}
+                      variant="default" 
+                      size="icon"
+                      disabled={isPending}
+                      className='absolute right-2 top-0 bottom-0 my-auto size-8'
+                    >
+                      {isPending ? (
+                        <LoaderCircle className='size-4 animate-spin' />
+                      ) : (
+                        <>
+                          {isSuccess && variables.email === email ? (
+                            <Check className='size-4' />
+                          ) : (
+                            <SendHorizontal className='size-4' />
+                          )}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <Button variant='outline'>Learn more</Button>
       </div>
     </div>
   )
 }
+1000 * 1000 * 1000

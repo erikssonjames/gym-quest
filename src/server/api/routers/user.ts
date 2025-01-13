@@ -5,7 +5,7 @@ import {
   publicProcedure,
   protectedProcedure
 } from "@/server/api/trpc";
-import { type NewUser, type NewAccount, users, accounts, userSettings, type NewUserSettings, verificationQueue } from "@/server/db/schema/user";
+import { type NewUser, type NewAccount, users, accounts, userSettings, type NewUserSettings, verificationQueue, waitlists } from "@/server/db/schema/user";
 import { and, eq, lt, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { hashPassword, isPasswordValid } from "@/lib/hash";
@@ -328,6 +328,27 @@ export const userRouter = createTRPCRouter({
                     })
                 }
             }
+        }),
+
+    joinWaitlist: publicProcedure
+        .input(z.object({
+            email: z.string().email()
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const { email } = input
+
+            const alreadySubmitted = await ctx.db.query.waitlists.findFirst({
+                where: eq(waitlists.email, email)
+            })
+
+            if (alreadySubmitted) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'Already in the waitlist.'
+                })
+            }
+
+            await ctx.db.insert(waitlists).values({ email })
         })
 });
 

@@ -1,16 +1,16 @@
 'use client'
 
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "framer-motion"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export default function PagePath () {
   const progressX = useMotionValue(0)
   const progressY = useMotionValue(0)
 
-  const targetRef = useRef(null)
+  const targetRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: targetRef,
-    offset: ["start 60%", "end center"]
+    offset: ["start 90%", "end center"]
   })
 
   const strokeDashOffsetSpring = useSpring(
@@ -31,94 +31,32 @@ export default function PagePath () {
     [5, 5, 0]
   )
 
-  const [path, setPath] = useState<SVGPathElement | null>(null)
-  const [position, setPosition] = useState<{
-    xStart: number | null,
-    yStart: number | null,
-    xEnd: number | null,
-    yEnd: number | null,
-    innerWidth: number | null,
-  }>({
-    xStart: null,
-    xEnd: null,
-    yStart: null,
-    yEnd: null,
-    innerWidth: null
-  })
-
-  const pathRef = useCallback((node: SVGPathElement | null) => {
-      setPath(node)
-  }, [])
+  const pathRef = useRef<SVGPathElement>(null)
+  const [width, setWidth] = useState<number>(0)
 
   useEffect(() => {
     const handleResize = () => {
-      let obj: {
-        xStart: number | null,
-        yStart: number | null,
-        xEnd: number | null,
-        yEnd: number | null,
-        innerWidth: number | null
-      } = {
-        xStart: null,
-        xEnd: null,
-        yStart: null,
-        yEnd: null,
-        innerWidth: null
-      }
+      if (!targetRef.current) return
 
-      const startElement = document.getElementById('GYMQUESTER-END')
-      if (startElement) {
-        const { left, width, bottom } = startElement.getBoundingClientRect()
-        const topPosition = window.scrollY + bottom + 50
-        const startPosition = left + (width / 2)
-        obj = {
-          ...obj,
-          xStart: startPosition,
-          yStart: topPosition
-        }
-      }
-
-      const endElement = document.getElementById('QUESTDESCRIPTION-START')
-      if (endElement) {
-        const { left, width, top } = endElement.getBoundingClientRect()
-        const bottomPosition = window.scrollY + top
-        const endPosition = left + (width / 2)
-        obj = {
-          ...obj,
-          xEnd: endPosition,
-          yEnd: bottomPosition
-        }
-      }
-
-      if (typeof window !== "undefined") {
-        obj.innerWidth = window.innerWidth
-      }
-
-      if (Object.values(obj).some(v => v !== null)) {
-        setPosition(prev => {
-          const newObj = { ...prev }
-          if (obj.xEnd && obj.xEnd !== newObj.xEnd) newObj.xEnd = obj.xEnd
-          if (obj.xStart && obj.xStart !== newObj.xStart) newObj.xStart = obj.xStart
-          if (obj.yEnd && obj.yEnd !== newObj.yEnd) newObj.yEnd = obj.yEnd
-          if (obj.yStart && obj.yStart !== newObj.yStart) newObj.yStart = obj.yStart
-          if (obj.innerWidth && obj.innerWidth !== newObj.innerWidth) newObj.innerWidth = obj.innerWidth
-          return newObj
-        })
-      }
+      setWidth(targetRef.current.getBoundingClientRect().width)
     }
 
     handleResize()
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    window.addEventListener('focus', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('focus', handleResize)
+    }
   }, [])
 
   useEffect(() => {
-    if (!path) return
+    if (!pathRef.current) return
 
-    const totalPathLength = path.getTotalLength()
+    const totalPathLength = pathRef.current.getTotalLength()
     const initialValue = strokeDashOffsetSpring.get() as number
 
-    const initialCoords = path.getPointAtLength(
+    const initialCoords = pathRef.current.getPointAtLength(
       Math.max(totalPathLength - (totalPathLength * initialValue), 20)
     )
 
@@ -126,7 +64,8 @@ export default function PagePath () {
     progressY.set(initialCoords.y)
 
     const unsubscribe = strokeDashOffsetSpring.on('change', (latestValue) => {
-      const latestsPathProgress = path.getPointAtLength(
+      if (!pathRef.current) return
+      const latestsPathProgress = pathRef.current.getPointAtLength(
         Math.max(totalPathLength - (totalPathLength * latestValue), 20)
       )
 
@@ -135,36 +74,29 @@ export default function PagePath () {
     })
 
     return unsubscribe
-  }, [progressX, progressY, strokeDashOffsetSpring, path, position])
-
-  const width = (position.xEnd && position.xStart) ?
-    position.xStart - position.xEnd
-    : 0
-
-  const height = (position.yStart && position.yEnd) ?
-    position.yEnd - position.yStart
-    : 0
+  }, [progressX, progressY, strokeDashOffsetSpring, width])
 
   return (
-      <>
-        <div className="py-96" />
+    <section className="w-full justify-center items-start hidden lg:flex" style={{ height: 600 }}>
+      <div className="ps-20 pe-48 max-w-[1400px] w-full h-full">
         <div
           ref={targetRef}
-          className="absolute w-full h-full left-0 right-0 z-10s" 
-          style={{ top: position.yStart ?? 0, height: height - 200 }}>
+          className="w-full h-full relative" 
+        >
           <svg
             className="w-full h-full"
-            viewBox={`0 0 ${position.innerWidth ?? 0} ${height - 200}`}
+            viewBox={`0 0 ${width} 600`}
             xmlns="http://www.w3.org/2000/svg" 
-            xmlnsXlink="http://www.w3.org/1999/xlink" 
+            xmlnsXlink="http://www.w3.org/1999/xlink"
           >
             <filter id="circleGradient">
               <feGaussianBlur stdDeviation="2" />
             </filter>
 
             <path 
-              d={`M ${position.xStart ?? 0} 0 v 200 c 0 200, -200 200, -200 200 
-                  h -${width - 400} c -200 0, -200 200, -200 200 v ${height - 800}`}
+              d={`M ${width - 10} 0 v 100 c 0 200, -200 200, -200 200 
+                  h -${width - 420} c -200 0, -200 200, -200 200 v 100`}
+              preserveAspectRatio="true"
               fill="none"
               stroke="#757575"
               strokeWidth="2px"
@@ -174,8 +106,8 @@ export default function PagePath () {
               ref={pathRef}
             />
             <motion.path 
-              d={`M ${position.xStart ?? 0} 0 v 200 c 0 200, -200 200, -200 200 
-                  h -${width - 400} c -200 0, -200 200, -200 200 v ${height - 800}`}
+              d={`M ${width - 10} 0 v 100 c 0 200, -200 200, -200 200 
+              h -${width - 420} c -200 0, -200 200, -200 200 v 100`}
               fill="none"
               stroke="#9d31ff"
               strokeWidth="4px"
@@ -192,13 +124,10 @@ export default function PagePath () {
             />
           </svg>
           <div
-            className="absolute bottom-0 w-28 bg-gradient-to-b from-transparent via-background to-background"
-            style={{
-              left: position.xEnd ? position.xEnd - 56 : 0,
-              height: (height - 400) / 2
-            }}
+            className="absolute left-0 bottom-0 w-5 h-24 bg-gradient-to-b from-transparent via-background/80 to-background"
           />
         </div>
-      </>
+      </div>
+    </section>
   )
 }

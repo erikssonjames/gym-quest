@@ -57,8 +57,7 @@ function BorderRadiusExample (
         <Button 
             size="sm" 
             onClick={onClick} 
-            variant="outline"
-            isActive={isActive}
+            variant={isActive ? "default" : "outline"}
         >
             {radiusName()}
         </Button>
@@ -130,14 +129,6 @@ export default function AppearanceSettings () {
                                 />
                             ))}
                         </div>
-                    </CardContent>
-                </Card>
-                <Card className="flex-grow">
-                    <CardHeader>
-                        <CardTitle>Border Radius</CardTitle>
-                        <CardDescription>Customize the border radius to your liking.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
                     </CardContent>
                 </Card>
             </div>

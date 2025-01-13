@@ -174,9 +174,9 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
         </form>
       </Form>
       <div className='my-8 flex items-center'>
-        <Separator inFlex />
+        <Separator className="w-fit flex-grow" />
         <H4 className='px-4' text='or' />
-        <Separator inFlex />
+        <Separator className="w-fit flex-grow" />
       </div>
       <div className="flex w-full items-center justify-center">
         {providers.filter(p => p.id !== 'credentials').map((provider) => (
@@ -184,7 +184,7 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
             key={provider.id} variant='outline'
             onClick={() => onProviderSignIn(provider.id)}
           >
-            <span className="size-6">
+            <span className="size-6 flex items-center justify-center">
               {providerIcon(provider.id)}
             </span>
           </Button>

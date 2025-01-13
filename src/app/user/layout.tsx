@@ -14,8 +14,6 @@ export default async function Layout({
   const user = await api.user.getMe()
   const session = await auth()
 
-  console.log(session)
-
   return (
     <SessionProvider session={session}>
       {user.username ? main : create}
