@@ -4,22 +4,33 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
-import { exercise, exerciseMuscle, ExerciseZod, InsertExerciseZod } from "@/server/db/schema/exercise";
-import { eq } from "drizzle-orm";
+import { exercise, exercisePublicRequest, exerciseToMuscle, ExerciseZod, InsertExerciseZod } from "@/server/db/schema/exercise";
+import { eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 export const exerciseRouter = createTRPCRouter({
   createExercise: protectedProcedure
     .input(z.object({
       ...InsertExerciseZod.shape,
+      requestToBePublic: z.boolean().optional(),
       muscleIds: z.array(z.string())
     }))
     .mutation(async ({ ctx, input }) => {
-      const { name, description, muscleIds } = input;
+      const userId = ctx.session.user.id
+
+      if (!userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Not authorized to access this resource."
+        });
+      }
+
+      const { name, description, muscleIds, requestToBePublic } = input;
 
       const newExercise = await ctx.db.insert(exercise).values({
         name,
         description,
+        userId
       }).returning({ id: exercise.id });
 
       const exerciseId = newExercise[0]?.id;
@@ -32,7 +43,7 @@ export const exerciseRouter = createTRPCRouter({
       }
 
       if (muscleIds && muscleIds.length > 0) {
-        await ctx.db.insert(exerciseMuscle).values(
+        await ctx.db.insert(exerciseToMuscle).values(
           muscleIds.map((muscleId) => ({
             exerciseId,
             muscleId,
@@ -40,19 +51,42 @@ export const exerciseRouter = createTRPCRouter({
         );
       }
 
+      if (requestToBePublic) {
+        await ctx.db.insert(exercisePublicRequest).values({ exerciseId })
+      }
+
       return { id: exerciseId, name, description };
     }),
 
   getExercises: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.query.exercise.findMany({
+    const userId = ctx.session?.user.id
+
+    if (!userId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Not authorized to access this resource."
+      });
+    }
+
+    const exercises = await ctx.db.query.exercise.findMany({
+      where: or(
+        eq(exercise.userId, userId),
+        eq(exercise.isPublic, true)
+      ),
       with: {
-        exerciseMuscle: {
+        muscles: {
           with: {
             muscle: true,
-          },
+          }
         },
+        requestToBePublic: true
       },
     });
+
+    return exercises.map(exercise => ({
+      ...exercise,
+      muscles: exercise.muscles.map(m => m.muscle)
+    }))
   }),
 
   getExerciseById: publicProcedure
@@ -63,11 +97,7 @@ export const exerciseRouter = createTRPCRouter({
       const exerciseData = await ctx.db.query.exercise.findFirst({
         where: eq(exercise.id, id),
         with: {
-          exerciseMuscle: {
-            with: {
-              muscle: true,
-            },
-          },
+          muscles: true
         },
       });
 
@@ -91,14 +121,14 @@ export const exerciseRouter = createTRPCRouter({
 
       await ctx.db.update(exercise).set({
         ...(name ? { name } : {}),
-        ...(description ? { description } : {}),
+        ...(description ? { description } : {})
       }).where(eq(exercise.id, id));
 
       if (muscleIds) {
-        await ctx.db.delete(exerciseMuscle).where(eq(exerciseMuscle.exerciseId, id));
+        await ctx.db.delete(exerciseToMuscle).where(eq(exerciseToMuscle.exerciseId, id));
 
         if (muscleIds.length > 0) {
-          await ctx.db.insert(exerciseMuscle).values(
+          await ctx.db.insert(exerciseToMuscle).values(
             muscleIds.map((muscleId) => ({
               exerciseId: id,
               muscleId,
@@ -115,7 +145,7 @@ export const exerciseRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id } = input;
 
-      await ctx.db.delete(exerciseMuscle).where(eq(exerciseMuscle.exerciseId, id));
+      await ctx.db.delete(exerciseToMuscle).where(eq(exerciseToMuscle.exerciseId, id));
       await ctx.db.delete(exercise).where(eq(exercise.id, id));
 
       return { id };

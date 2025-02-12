@@ -1,27 +1,37 @@
+"use client"
+
 import { Button } from "@/components/ui/button";
-import DynamicLayout from "../../_components/dynamic-layout";
 import { H3 } from "@/components/typography/h3";
 import { Grid2X2, SquarePlus } from "lucide-react";
+import Link from "next/link";
+import DisplayWorkouts from "../_components/display-workouts";
+import { api } from "@/trpc/react";
 
 export default function ManagePage () {
-  return (
-    <DynamicLayout>
-      <div className="px-10">
-        <div className="flex justify-between items-center">
-          <H3 text="Your workouts" />
+  const { data: workouts, isLoading } = api.workout.getWorkouts.useQuery()
 
-          <div className="flex gap-2">
-            <Button size="sm" className="h-8">
+  return (
+    <>
+      <div className="flex justify-between items-center">
+        <H3 text="Your workouts" />
+
+        <div className="flex gap-2">
+          <Button size="sm" className="h-8" asChild>
+            <Link href="/user/workouts/browse">
               <Grid2X2 />
-              Browse
-            </Button>
-            <Button size="sm" className="h-8">
+                  Browse
+            </Link>
+          </Button>
+          <Button size="sm" className="h-8" asChild>
+            <Link href="/user/workouts/manage/create">
               <SquarePlus />
-              Create
-            </Button>
-          </div>
+                  Create
+            </Link>
+          </Button>
         </div>
       </div>
-    </DynamicLayout>
+
+      <DisplayWorkouts workouts={workouts} loading={isLoading} />
+    </>
   )
 }

@@ -423,15 +423,8 @@ export default function GymDescription () {
   useEffect(() => {
     currentStep.on('change', (latestValue) => {
       setActiveStep(Math.floor(latestValue))
-      console.log(latestValue)
     })
   }, [currentStep])
-
-  useEffect(() => {
-    scrollYProgress.on('change', (n) => {
-      console.log('scrollYProgress.on', n)
-    })
-  }, [scrollYProgress])
 
   const getStartEndValues = (index: number) => {
     const start = index / (steps - 1)
@@ -441,8 +434,6 @@ export default function GymDescription () {
       endValue: end
     }
   }
-
-  console.log('activeStep', activeStep)
 
   return (
     <div 

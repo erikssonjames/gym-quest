@@ -2,12 +2,11 @@
 
 import { H4 } from "@/components/typography/h4";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, Form } from "@/components/ui/form";
-import { type ToasterToast, useToast } from "@/components/ui/use-toast";
 
 import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "next-auth/react";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,9 +14,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef } from "react";
-import { ToastAction } from "@/components/ui/toast";
 import { type PROVIDER } from "@/variables/auth";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   usernameOrEmail: z.string().min(3, {
@@ -26,15 +24,8 @@ const formSchema = z.object({
   password: z.string()
 })
 
-interface Toast {
-  id: string;
-  dismiss: () => void;
-  update: (props: ToasterToast) => void;
-}
-
 export default function SignInForm({ providers }: { providers: { id: PROVIDER, name: string }[] }) {
 	const router = useRouter()
-  const { toast } = useToast()
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,10 +46,8 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
       })
       
       if (res?.error) {
-        toast({
-          title: 'Error',
+        toast.error('Error', {
           description: 'Something went wrong!',
-          variant: 'destructive'
         })
       } else {
         router.push('/user')
@@ -74,11 +63,7 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
         description = 'Oops, looks like GymQuest is not working as intended at the moment.'
       }
 
-      toast({
-        title,
-        description,
-        variant: 'destructive'
-      })
+      toast.error(title, { description })
     }
   }
 
@@ -102,40 +87,6 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
     } catch (e) {
     }
   }
-
-  const searchParams = useSearchParams()
-  const error = searchParams.get('error')
-  const toastRef = useRef<Toast | null>(null)
-  useEffect(() => {
-    if (error) {
-      if (toastRef.current) {
-        toastRef.current.update({
-          description: error,
-          id: toastRef.current.id
-        })
-      } else {
-        setTimeout(() => {
-          toastRef.current = toast({
-            title: 'Error',
-            description: 'Something went wrong logging in',
-            variant: 'destructive',
-            duration: Infinity,
-            action: (
-              <ToastAction
-                altText="Contact us"
-                onClick={() => console.log('#TODO')}
-              >
-                Contact us
-              </ToastAction>
-            )
-          })
-        }, 500)
-      }
-    } else if (toastRef.current) {
-      toastRef.current.dismiss()
-      toastRef.current = null
-    }
-  }, [error, toast])
 
   return (
     <>

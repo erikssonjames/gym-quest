@@ -2,16 +2,17 @@
 const config = {
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "project": true
+    "project": "./tsconfig.json",
+    "tsconfigRootDir": __dirname
   },
   "plugins": [
     "@typescript-eslint",
     "drizzle"
   ],
   "extends": [
-    "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended-type-checked",
-    "plugin:@typescript-eslint/stylistic-type-checked"
+    "plugin:@typescript-eslint/stylistic-type-checked",
+    "next"
   ],
   "rules": {
     "@typescript-eslint/array-type": "off",
@@ -55,7 +56,8 @@ const config = {
           "ctx.db"
         ]
       }
-    ]
+    ],
+    "indent": ["error", 2]
   }
 }
 module.exports = config;

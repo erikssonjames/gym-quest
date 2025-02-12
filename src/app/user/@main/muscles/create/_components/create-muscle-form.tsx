@@ -21,10 +21,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { type InsertMuscle, type InsertMuscleGroup, InsertMuscleGroupZod, InsertMuscleZod } from "@/server/db/schema/body";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useSearchParamsFn } from "@/hooks/use-search-params-fn";
+import { SearchParam } from "@/variables/url";
+import { toast } from "sonner";
 
 type FormValues = InsertMuscle;
 
 export default function CreateMuscleForm() {
+  const searchParamFunctions = useSearchParamsFn()
+
   const { data: muscleGroups, refetch } = api.body.getMuscleGroups.useQuery();
   const { mutateAsync, isPending } = api.body.createMuscle.useMutation({
     onSuccess: () => {
@@ -66,7 +72,16 @@ export default function CreateMuscleForm() {
   });
 
   const onSubmit = async (values: FormValues) => {
-    await mutateAsync(values);
+    try {
+      await mutateAsync(values);
+      toast.success('Workout created!')
+      form.reset()
+      searchParamFunctions.get(SearchParam.RETURN_URL)?.()
+    } catch (e) {
+      toast.error('Error', {
+        description: String(e)
+      })
+    }
   };
 
   const onCreateMuscleGroup = async (values: InsertMuscleGroup) => {
@@ -191,8 +206,8 @@ export default function CreateMuscleForm() {
                           <CommandGroup>
                             {muscleGroups?.map((muscleGroup) => (
                               <CommandItem
-                                value={muscleGroup.id}
-                                key={muscleGroup.id}
+                                value={muscleGroup.name}
+                                key={muscleGroup.name}
                                 onSelect={() => {
                                   form.setValue("muscleGroupId", muscleGroup.id)
                                 }}

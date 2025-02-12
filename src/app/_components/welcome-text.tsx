@@ -3,15 +3,14 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/components/ui/use-toast'
 import { api } from '@/trpc/react'
 import { TRPCClientError } from '@trpc/client'
 import { motion } from 'framer-motion'
 import { Check, LoaderCircle, SendHorizontal } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 export default function WelcomeText() {
-  const { toast } = useToast()
   const [email, setEmail] = useState<string>('')
   const { mutateAsync, variables, isPending, isSuccess } = api.user.joinWaitlist.useMutation()
 
@@ -21,16 +20,13 @@ export default function WelcomeText() {
     try {
       await mutateAsync({ email })
 
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'You have succesfully joined the waiting list!',
       })
     } catch (e) {
       if (e instanceof TRPCClientError) {
-        toast({
-          title: 'Error',
+        toast.error('Error', {
           description: e.message,
-          variant: 'destructive'
         })
       }
     }

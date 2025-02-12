@@ -6,6 +6,7 @@ import { api,  } from '@/trpc/react';
 import { STANDARD_BORDER_RADIUS, STANDARD_COLOR_THEME, type BORDER_RADIUS, type COLOR_THEMES } from '@/variables/settings';
 import { useQueryClient } from '@tanstack/react-query';
 import { getQueryKey } from '@trpc/react-query';
+import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect } from 'react';
 
 interface ThemeContextType extends Partial<NewUserSettings> {
@@ -18,7 +19,9 @@ export const UserSettingsProvider = (
     { children, initialTheme, initialBorderRadius }: 
     { children: React.ReactNode, initialTheme: COLOR_THEMES, initialBorderRadius: BORDER_RADIUS }
 ) => {
-  const { data: user } = api.user.getMe.useQuery()
+  const router = useRouter()
+
+  const { data: user, isSuccess, isFetched, isError } = api.user.getMe.useQuery()
   const getMeQueryKey = getQueryKey(api.user.getMe, undefined, 'query')
   const queryClient = useQueryClient()
   const { mutate } = api.user.updateUserSettings.useMutation({
@@ -64,6 +67,14 @@ export const UserSettingsProvider = (
       if (isDark) htmlEl.classList.add("dark")
     }
   }, [theme, borderRadius])
+
+  useEffect(() => {
+    if (
+      (isSuccess || isFetched || isError) && !user
+    ) {
+      router.push("/signin")
+    }
+  }, [user, isSuccess, isFetched, isError, router])
 
   return (
     <ThemeContext.Provider value={{ ...(user?.userSettings ?? {}), updateUserSettings }}>

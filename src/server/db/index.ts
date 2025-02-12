@@ -8,6 +8,7 @@ import * as userSchema from "./schema/user";
 import * as bodySchema from "./schema/body"
 import * as exerciseSchema from "./schema/exercise"
 import * as workoutSchema from "./schema/workout"
+import * as relations from "./schema/relations"
 
 
 // Combined Schema
@@ -15,10 +16,15 @@ const schema = {
     ...userSchema,
     ...bodySchema,
     ...exerciseSchema,
-    ...workoutSchema
+    ...workoutSchema,
+    ...relations
 }
 
 const connectionString = env.SUPABASE_URI;
 
-const client = postgres(connectionString)
+const client = postgres(connectionString, {
+    max: 10,
+    idle_timeout: 30,
+    connect_timeout: 10
+})
 export const db = drizzle(client, { schema });

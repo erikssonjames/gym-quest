@@ -1,0 +1,1 @@
+ALTER TABLE "workoutSession" ADD COLUMN "useLastRecordedValue" boolean NOT NULL;

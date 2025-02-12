@@ -7,18 +7,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "@/components/ui/sidebar"
-import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
+import { type SidebarItem } from "./app-sidebar"
 
 export function NavGeneral({
   generalItem,
   isActive
 }: {
-  generalItem: {
-    name: string
-    url: string
-    icon: LucideIcon
-  }[],
+  generalItem: SidebarItem[],
   isActive: (url: string) => boolean
 }) {
   return (
@@ -26,11 +22,11 @@ export function NavGeneral({
       <SidebarGroupLabel>Pages</SidebarGroupLabel>
       <SidebarMenu>
         {generalItem.map((item) => (
-          <SidebarMenuItem key={item.name}>
+          <SidebarMenuItem key={item.title}>
             <SidebarMenuButton asChild isActive={isActive(item.url)}>
               <Link href={item.url}>
-                <item.icon />
-                <span>{item.name}</span>
+                {item.icon && <item.icon />}
+                <span>{item.title}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

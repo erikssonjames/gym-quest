@@ -1,21 +1,19 @@
 'use client'
 
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, Form } from "@/components/ui/form";
-import { type ToasterToast, useToast } from "@/components/ui/use-toast";
 
 import { AuthError, CredentialsSignin } from "next-auth";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Input } from "@/components/ui/input";
-import { useEffect, useRef } from "react";
-import { ToastAction } from "@/components/ui/toast";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon } from "lucide-react";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -31,15 +29,8 @@ const formSchema = z.object({
   }
 })
 
-interface Toast {
-  id: string;
-  dismiss: () => void;
-  update: (props: ToasterToast) => void;
-}
-
 export default function SignUpForm() {
 	const router = useRouter()
-  const { toast } = useToast()
 
   const utils = api.useUtils()
   const { mutateAsync, isPending } = api.user.signup.useMutation({
@@ -74,47 +65,10 @@ export default function SignUpForm() {
         description = 'Oops, looks like GymQuest is not working as intended at the moment.'
       }
 
-      toast({
-        title,
-        description,
-        variant: 'destructive'
-      })
+      toast.error(title, { description })
     }
   }
 
-  const searchParams = useSearchParams()
-  const error = searchParams.get('error')
-  const toastRef = useRef<Toast | null>(null)
-  useEffect(() => {
-    if (error) {
-      if (toastRef.current) {
-        toastRef.current.update({
-          description: error,
-          id: toastRef.current.id
-        })
-      } else {
-        setTimeout(() => {
-          toastRef.current = toast({
-            title: 'Error',
-            description: 'Something went wrong logging in',
-            variant: 'destructive',
-            duration: Infinity,
-            action: (
-              <ToastAction
-                altText="Contact us"
-                onClick={() => console.log('#TODO')}
-              >
-                Contact us
-              </ToastAction>
-            )
-          })
-        }, 500)
-      }
-    } else if (toastRef.current) {
-      toastRef.current.dismiss()
-      toastRef.current = null
-    }
-  }, [error, toast])
 
   return (
     <>

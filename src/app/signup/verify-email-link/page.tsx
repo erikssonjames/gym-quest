@@ -46,7 +46,6 @@ export default function VerifyEmailLink() {
     if (!email || !token) router.replace('/signup?redirect=true')
     
     if (token && email && !hasMadeRequestRef.current) {
-      console.log('request')
       void handleVerifyEmail()
     }
   }, [email, token, router, handleVerifyEmail])

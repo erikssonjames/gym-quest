@@ -1,0 +1,1 @@
+ALTER TABLE "workoutSessionLogFragment" ADD COLUMN "skipped" boolean;

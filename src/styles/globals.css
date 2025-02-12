@@ -1,8 +1,8 @@
 @tailwind base;
-  @tailwind components;
-  @tailwind utilities;
+@tailwind components;
+@tailwind utilities;
 
-  @layer base {
+@layer base {
   /* Violet (standard) */
   :root,
   :root .violet {
@@ -821,5 +821,27 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .mask-gradient-full {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+  }
+
+  .mask-gradient-top {
+    -webkit-mask-image: linear-gradient(to bottom, black, black 80%, transparent);
+    mask-image: linear-gradient(to bottom, black, black 80%, transparent);
+  }
+
+  .mask-gradient-bottom {
+    -webkit-mask-image: linear-gradient(to top, black, black 80%, transparent);
+    mask-image: linear-gradient(to top, black, black 80%, transparent);
+  }
+
+  .mask-gradient-none {
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }

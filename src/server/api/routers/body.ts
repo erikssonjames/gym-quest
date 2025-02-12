@@ -43,7 +43,7 @@ export const bodyRouter = createTRPCRouter({
       const muscleGroupData = await ctx.db.query.muscleGroup.findFirst({
         where: eq(muscleGroup.id, id),
         with: {
-          muscle: true,
+          muscles: true
         },
       });
 
@@ -118,9 +118,9 @@ export const bodyRouter = createTRPCRouter({
   getMuscles: publicProcedure.query(async ({ ctx }) => {
     return await ctx.db.query.muscle.findMany({
       with: {
-        muscleGroup: true,
-      },
-    });
+        muscleGroup: true
+      }
+    })
   }),
 
   getMuscleById: publicProcedure

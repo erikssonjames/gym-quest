@@ -2,18 +2,31 @@
 
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import ScrollProvider from "./scroll-provider";
+import ContainerRefProvider from "./container-ref-provider";
 
 export default function DynamicLayout({ children, className }: { children: ReactNode, className?: string }) {
+  const outerRef = useRef(null)
+  const scrollRef = useRef(null)
   const { open } = useSidebar()
 
   return (
-    <div className={cn(
-      "absolute inset-0 overflow-y-auto",
-      open ? "pt-16" : "pt-12",
-      className
-    )}>
-      {children}
+    <div className="absolute inset-0" ref={outerRef}>
+      <ContainerRefProvider ref={outerRef}>
+        <div 
+          className={cn(
+            "absolute inset-0 overflow-y-auto",
+            open ? "pt-16" : "pt-12",
+            className
+          )}
+          ref={scrollRef}
+        >
+          <ScrollProvider ref={scrollRef}>
+            {children}
+          </ScrollProvider>
+        </div>
+      </ContainerRefProvider>
     </div>
   )
 }

@@ -3,8 +3,7 @@ import {
   STANDARD_COLOR_THEME, 
   type BORDER_RADIUS, 
   type COLOR_THEMES
- } from "@/variables/settings";
-import { relations } from "drizzle-orm";
+} from "@/variables/settings";
 import {
   index,
   integer,
@@ -12,36 +11,30 @@ import {
   text,
   timestamp,
   varchar,
-  pgTable
+  pgTable,
+  uuid
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
 type ExtraAdapterAccountType = AdapterAccountType | 'credentials'
 
 export const users = pgTable("user", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }),
   username: varchar("username", { length: 20 }).unique(),
   password: varchar("password"),
   email: varchar("email", { length: 255 }).notNull(),
-  emailVerified: timestamp("emailVerified", {
+  emailVerified: timestamp("email_verified", {
     mode: "date",
     withTimezone: true,
   }).defaultNow(),
   image: varchar("image", { length: 255 }),
 });
 
-export const usersRelations = relations(users, ({ many, one }) => ({
-  accounts: many(accounts),
-  userSettings: one(userSettings)
-}));
-
 export const accounts = pgTable(
   "account",
   {
-    userId: text("userId")
+    userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     type: varchar("type", { length: 255 })
@@ -65,15 +58,11 @@ export const accounts = pgTable(
   })
 );
 
-export const accountsRelations = relations(accounts, ({ one }) => ({
-  user: one(users, { fields: [accounts.userId], references: [users.id] }),
-}));
-
 export const sessions = pgTable(
   "session",
   {
     sessionToken: text("sessionToken").primaryKey(),
-    userId: text("userId")
+    userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     expires: timestamp("expires", {
@@ -86,9 +75,6 @@ export const sessions = pgTable(
   })
 );
 
-export const sessionsRelations = relations(sessions, ({ one }) => ({
-  user: one(users, { fields: [sessions.userId], references: [users.id] }),
-}));
 
 export const verificationTokens = pgTable(
   "verificationToken",
@@ -106,7 +92,7 @@ export const verificationTokens = pgTable(
 );
 
 export const userSettings = pgTable("userSettings", {
-  userId: text('userId')
+  userId: uuid('userId')
     .primaryKey()
     .references(() => users.id, { onDelete:  'cascade' }),
   colorTheme: varchar('colorTheme', { length: 20 })
@@ -118,10 +104,6 @@ export const userSettings = pgTable("userSettings", {
     .$default(() => STANDARD_BORDER_RADIUS)
     .notNull()
 })
-
-export const userSettingsRelations = relations(userSettings, ({ one }) => ({
-  user: one(users, { fields: [userSettings.userId], references: [users.id] })
-}))
 
 export const verificationQueue = pgTable("verificationQueue", {
   email: varchar("email", { length: 255 })

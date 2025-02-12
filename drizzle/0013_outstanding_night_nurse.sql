@@ -1,0 +1,3 @@
+ALTER TABLE "workoutSessionLog" ALTER COLUMN "exerciseId" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "workoutSessionLog" ADD COLUMN "workoutSetCollectionId" uuid NOT NULL;--> statement-breakpoint
+ALTER TABLE "workoutSessionLog" ADD CONSTRAINT "workoutSessionLog_workoutSetCollectionId_workoutSetCollection_id_fk" FOREIGN KEY ("workoutSetCollectionId") REFERENCES "public"."workoutSetCollection"("id") ON DELETE no action ON UPDATE no action;

@@ -1,7 +1,7 @@
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod"
 
-export const muscleGroup = pgTable("muscle_group", {
+export const muscleGroup = pgTable("muscleGroup", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
@@ -10,10 +10,10 @@ export const muscleGroup = pgTable("muscle_group", {
 export const muscle = pgTable("muscle", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  latinName: text("name"),
-  muscleGroupId: uuid("muscle_group_id")
+  latinName: text("latinName"),
+  muscleGroupId: uuid("muscleGroupId")
     .notNull()
-    .references(() => muscleGroup.id),
+    .references(() => muscleGroup.id, { onDelete: "cascade" }),
   description: text("description"),
 });
 
