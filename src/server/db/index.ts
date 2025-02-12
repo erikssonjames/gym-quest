@@ -25,6 +25,7 @@ const connectionString = env.SUPABASE_URI;
 const client = postgres(connectionString, {
   max: 10,
   idle_timeout: 30,
-  connect_timeout: 10
+  connect_timeout: 10,
+  ssl: 'require'
 })
 export const db = drizzle(client, { schema });
