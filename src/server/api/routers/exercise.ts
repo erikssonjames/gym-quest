@@ -5,7 +5,7 @@ import {
   publicProcedure,
 } from "@/server/api/trpc";
 import { exercise, exercisePublicRequest, exerciseToMuscle, ExerciseZod, InsertExerciseZod } from "@/server/db/schema/exercise";
-import { eq, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 export const exerciseRouter = createTRPCRouter({
@@ -117,12 +117,21 @@ export const exerciseRouter = createTRPCRouter({
       muscleIds: z.array(z.string())
     }))
     .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+
+      if (!userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Not authorized to access this resource."
+        });
+      }
+
       const { id, name, description, muscleIds } = input;
 
       await ctx.db.update(exercise).set({
         ...(name ? { name } : {}),
         ...(description ? { description } : {})
-      }).where(eq(exercise.id, id));
+      }).where(and(eq(exercise.id, id), eq(exercise.userId, userId)));
 
       if (muscleIds) {
         await ctx.db.delete(exerciseToMuscle).where(eq(exerciseToMuscle.exerciseId, id));
@@ -143,10 +152,19 @@ export const exerciseRouter = createTRPCRouter({
   deleteExercise: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+
+      if (!userId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Not authorized to access this resource."
+        });
+      }
+
       const { id } = input;
 
       await ctx.db.delete(exerciseToMuscle).where(eq(exerciseToMuscle.exerciseId, id));
-      await ctx.db.delete(exercise).where(eq(exercise.id, id));
+      await ctx.db.delete(exercise).where(and(eq(exercise.id, id), eq(exercise.userId, userId)));
 
       return { id };
     }),

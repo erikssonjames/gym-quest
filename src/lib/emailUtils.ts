@@ -10,7 +10,7 @@ interface sendVerifyEmailParams {
 }
 export default async function sendVerifyEmail({ token, email }: sendVerifyEmailParams) {
   return await resend.emails.send({
-    from: 'Acme <onboarding@resend.dev>',
+    from: 'Acme <onboarding@gymquest.net>',
     to: [email],
     subject: 'Verify Email',
     text: '?',

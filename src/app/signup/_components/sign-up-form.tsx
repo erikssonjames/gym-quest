@@ -62,6 +62,7 @@ export default function SignUpForm() {
       } else if (error instanceof CredentialsSignin) {
         description = error.message
       } else {
+        console.error(error)
         description = 'Oops, looks like GymQuest is not working as intended at the moment.'
       }
 

@@ -106,3 +106,7 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     },
   });
 });
+
+export const disabledProcedure = t.procedure.use(() => {
+  throw new TRPCError({ code: "SERVICE_UNAVAILABLE" })
+})

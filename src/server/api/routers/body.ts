@@ -1,15 +1,15 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
+  disabledProcedure,
+  protectedProcedure
 } from "@/server/api/trpc";
 import { muscleGroup, muscle, MuscleGroupZod, InsertMuscleZod, MuscleZod, InsertMuscleGroupZod } from "@/server/db/schema/body";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 export const bodyRouter = createTRPCRouter({
-  createMuscleGroup: protectedProcedure
+  createMuscleGroup: disabledProcedure
     .input(InsertMuscleGroupZod)
     .mutation(async ({ ctx, input }) => {
       const { name, description } = input;
@@ -31,11 +31,11 @@ export const bodyRouter = createTRPCRouter({
       return { id: muscleGroupId, name, description };
     }),
 
-  getMuscleGroups: publicProcedure.query(async ({ ctx }) => {
+  getMuscleGroups: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.query.muscleGroup.findMany();
   }),
 
-  getMuscleGroupById: publicProcedure
+  getMuscleGroupById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const { id } = input;
@@ -57,7 +57,7 @@ export const bodyRouter = createTRPCRouter({
       return muscleGroupData;
     }),
 
-  updateMuscleGroup: protectedProcedure
+  updateMuscleGroup: disabledProcedure
     .input(MuscleGroupZod)
     .mutation(async ({ ctx, input }) => {
       const { id, name, description } = input;
@@ -70,7 +70,7 @@ export const bodyRouter = createTRPCRouter({
       return { id, name, description };
     }),
 
-  deleteMuscleGroup: protectedProcedure
+  deleteMuscleGroup: disabledProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { id } = input;
@@ -91,7 +91,7 @@ export const bodyRouter = createTRPCRouter({
       return { id };
     }),
 
-  createMuscle: protectedProcedure
+  createMuscle: disabledProcedure
     .input(InsertMuscleZod)
     .mutation(async ({ ctx, input }) => {
       const { name, latinName, muscleGroupId, description } = input;
@@ -115,7 +115,7 @@ export const bodyRouter = createTRPCRouter({
       return { id: muscleId, name, latinName, description };
     }),
 
-  getMuscles: publicProcedure.query(async ({ ctx }) => {
+  getMuscles: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.query.muscle.findMany({
       with: {
         muscleGroup: true
@@ -123,7 +123,7 @@ export const bodyRouter = createTRPCRouter({
     })
   }),
 
-  getMuscleById: publicProcedure
+  getMuscleById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const { id } = input;
@@ -145,7 +145,7 @@ export const bodyRouter = createTRPCRouter({
       return muscleData;
     }),
 
-  updateMuscle: protectedProcedure
+  updateMuscle: disabledProcedure
     .input(MuscleZod)
     .mutation(async ({ ctx, input }) => {
       const { id, name, latinName, description, muscleGroupId } = input;
@@ -160,7 +160,7 @@ export const bodyRouter = createTRPCRouter({
       return { id, name, latinName, description, muscleGroupId };
     }),
 
-  deleteMuscle: protectedProcedure
+  deleteMuscle: disabledProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { id } = input;
