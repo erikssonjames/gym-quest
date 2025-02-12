@@ -6,13 +6,13 @@ interface SmallProps {
 }
 
 export function Small({ className, text }: SmallProps) {
-    return (
-      <small className={cn(
-        "text-sm font-medium leading-none",
-        className
-      )}>
-        {text}
-      </small>
-    )
-  }
+  return (
+    <small className={cn(
+      "text-sm font-medium leading-none",
+      className
+    )}>
+      {text}
+    </small>
+  )
+}
   

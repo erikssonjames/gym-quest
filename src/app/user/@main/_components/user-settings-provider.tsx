@@ -16,8 +16,8 @@ interface ThemeContextType extends Partial<NewUserSettings> {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const UserSettingsProvider = (
-    { children, initialTheme, initialBorderRadius }: 
-    { children: React.ReactNode, initialTheme: COLOR_THEMES, initialBorderRadius: BORDER_RADIUS }
+  { children, initialTheme, initialBorderRadius }: 
+  { children: React.ReactNode, initialTheme: COLOR_THEMES, initialBorderRadius: BORDER_RADIUS }
 ) => {
   const router = useRouter()
 

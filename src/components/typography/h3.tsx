@@ -6,13 +6,13 @@ interface H3Props {
 }
 
 export function H3({ className, text }: H3Props) {
-    return (
-      <h3 className={cn(
-        "scroll-m-20 text-2xl font-semibold tracking-tight",
-        className
-      )}>
-        {text}
-      </h3>
-    )
-  }
+  return (
+    <h3 className={cn(
+      "scroll-m-20 text-2xl font-semibold tracking-tight",
+      className
+    )}>
+      {text}
+    </h3>
+  )
+}
   

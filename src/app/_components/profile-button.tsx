@@ -6,24 +6,24 @@ import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 
 export default function ProfileButton ({ session }: { session: Session | null }) {
-    return (
-        <div>
-            {session && (
-                <Button asChild>
-                    <Link href="/user">
+  return (
+    <div>
+      {session && (
+        <Button asChild>
+          <Link href="/user">
                         Dashboard
-                    </Link>
-                </Button>
-            )}
-            <Button variant='ghost' onClick={async () => {
-                if (session) {
-                    await signOut()
-                } else {
-                    await signIn()
-                }
-            }}>
-                <span className="text-primary">{session ? 'Sign out' : 'Sign in'}</span>
-            </Button>
-        </div>
-    )
+          </Link>
+        </Button>
+      )}
+      <Button variant='ghost' onClick={async () => {
+        if (session) {
+          await signOut()
+        } else {
+          await signIn()
+        }
+      }}>
+        <span className="text-primary">{session ? 'Sign out' : 'Sign in'}</span>
+      </Button>
+    </div>
+  )
 }

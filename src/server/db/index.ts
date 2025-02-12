@@ -13,18 +13,18 @@ import * as relations from "./schema/relations"
 
 // Combined Schema
 const schema = {
-    ...userSchema,
-    ...bodySchema,
-    ...exerciseSchema,
-    ...workoutSchema,
-    ...relations
+  ...userSchema,
+  ...bodySchema,
+  ...exerciseSchema,
+  ...workoutSchema,
+  ...relations
 }
 
 const connectionString = env.SUPABASE_URI;
 
 const client = postgres(connectionString, {
-    max: 10,
-    idle_timeout: 30,
-    connect_timeout: 10
+  max: 10,
+  idle_timeout: 30,
+  connect_timeout: 10
 })
 export const db = drizzle(client, { schema });

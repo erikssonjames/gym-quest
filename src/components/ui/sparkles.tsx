@@ -2,7 +2,7 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
-import type { Container, SingleOrMultiple } from "@tsparticles/engine";
+import type { Container, IResizeEvent, RecursivePartial, SingleOrMultiple } from "@tsparticles/engine";
 import { loadSlim } from "@tsparticles/slim";
 import { cn } from "@/lib/utils";
 import { motion, useAnimation } from "framer-motion";
@@ -35,13 +35,14 @@ export const SparklesCore = (props: ParticlesProps) => {
       await loadSlim(engine);
     }).then(() => {
       setInit(true);
-    });
+    })
+      .catch(() => undefined);
   }, []);
   const controls = useAnimation();
 
   const particlesLoaded = async (container?: Container) => {
     if (container) {
-      controls.start({
+      void controls.start({
         opacity: 1,
         transition: {
           duration: 1,
@@ -54,7 +55,7 @@ export const SparklesCore = (props: ParticlesProps) => {
     <motion.div animate={controls} className={cn("opacity-0", className)}>
       {init && (
         <Particles
-          id={id || "tsparticles"}
+          id={id ?? "tsparticles"}
           className={cn("h-full w-full")}
           particlesLoaded={particlesLoaded}
           options={{
@@ -79,7 +80,7 @@ export const SparklesCore = (props: ParticlesProps) => {
                   enable: false,
                   mode: "repulse",
                 },
-                resize: true as any,
+                resize: true as unknown as RecursivePartial<IResizeEvent>,
               },
               modes: {
                 push: {

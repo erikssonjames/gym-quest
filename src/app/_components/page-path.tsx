@@ -54,7 +54,7 @@ export default function PagePath () {
     if (!pathRef.current) return
 
     const totalPathLength = pathRef.current.getTotalLength()
-    const initialValue = strokeDashOffsetSpring.get() as number
+    const initialValue = strokeDashOffsetSpring.get()
 
     const initialCoords = pathRef.current.getPointAtLength(
       Math.max(totalPathLength - (totalPathLength * initialValue), 20)

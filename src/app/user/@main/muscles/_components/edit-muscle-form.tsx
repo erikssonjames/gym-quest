@@ -127,8 +127,8 @@ export default function EditMuscleForm({ muscle, close, closeForm }: { muscle: M
                       >
                         {field.value
                           ? muscleGroups?.find(
-                              (muscleGroup) => muscleGroup.id === field.value
-                            )?.name
+                            (muscleGroup) => muscleGroup.id === field.value
+                          )?.name
                           : "Select muscle group"}
                         <ChevronsUpDown className="opacity-50" />
                       </Button>
@@ -189,28 +189,28 @@ export default function EditMuscleForm({ muscle, close, closeForm }: { muscle: M
                           </DialogContent>
                         </Dialog>
                       </div>
-                        <CommandList>
-                          <CommandEmpty>No muscle groups found.</CommandEmpty>
-                          <CommandGroup>
-                            {muscleGroups?.map((muscleGroup) => (
-                              <CommandItem
-                                value={muscleGroup.name}
-                                key={muscleGroup.name}
-                                onSelect={() => {
-                                  form.setValue("muscleGroupId", muscleGroup.id)
-                                }}
-                              >
-                                {muscleGroup.name}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    muscleGroup.id === field.value
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
+                      <CommandList>
+                        <CommandEmpty>No muscle groups found.</CommandEmpty>
+                        <CommandGroup>
+                          {muscleGroups?.map((muscleGroup) => (
+                            <CommandItem
+                              value={muscleGroup.name}
+                              key={muscleGroup.name}
+                              onSelect={() => {
+                                form.setValue("muscleGroupId", muscleGroup.id)
+                              }}
+                            >
+                              {muscleGroup.name}
+                              <Check
+                                className={cn(
+                                  "ml-auto",
+                                  muscleGroup.id === field.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -237,10 +237,10 @@ export default function EditMuscleForm({ muscle, close, closeForm }: { muscle: M
         />
 
         <div className="flex gap-2 pt-4">
-            {close}
-            <Button type="submit" className="w-full">
-                {isPending ? <Loader2Icon className="size-6 animate-spin" /> : <>Update Muscle</>}
-            </Button>
+          {close}
+          <Button type="submit" className="w-full">
+            {isPending ? <Loader2Icon className="size-6 animate-spin" /> : <>Update Muscle</>}
+          </Button>
         </div>
       </form>
     </Form>

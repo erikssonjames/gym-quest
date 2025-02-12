@@ -149,6 +149,7 @@ function IntegerSelectArray(
 
   const onSetValuesCallback = useCallback((arr: number[]) => {
     onSetValues(arr);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onInputChange = useCallback((val: string, index: number) => {

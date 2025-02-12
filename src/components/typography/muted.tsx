@@ -6,13 +6,13 @@ interface MutedProps {
 }
 
 export function Muted({ className, text }: MutedProps) {
-    return (
-      <p className={cn(
-        "text-sm text-muted-foreground",
-        className
-      )}>
-        {text}
-      </p>
-    )
-  }
+  return (
+    <p className={cn(
+      "text-sm text-muted-foreground",
+      className
+    )}>
+      {text}
+    </p>
+  )
+}
   

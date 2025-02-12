@@ -6,13 +6,13 @@ interface LeadProps {
 }
 
 export function Lead({ className, text }: LeadProps) {
-    return (
-      <p className={cn(
-        "text-xl text-muted-foreground",
-        className
-      )}>
-        {text}
-      </p>
-    )
-  }
+  return (
+    <p className={cn(
+      "text-xl text-muted-foreground",
+      className
+    )}>
+      {text}
+    </p>
+  )
+}
   

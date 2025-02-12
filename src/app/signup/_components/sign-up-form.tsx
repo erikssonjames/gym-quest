@@ -30,13 +30,13 @@ const formSchema = z.object({
 })
 
 export default function SignUpForm() {
-	const router = useRouter()
+  const router = useRouter()
 
   const utils = api.useUtils()
   const { mutateAsync, isPending } = api.user.signup.useMutation({
-      async onSuccess() {
-          await utils.user.getMe.invalidate()
-      }
+    async onSuccess() {
+      await utils.user.getMe.invalidate()
+    }
   })
 
   const form = useForm<z.infer<typeof formSchema>>({

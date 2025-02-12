@@ -10,7 +10,7 @@ export default async function Layout({
   create: React.ReactNode,
   main: React.ReactNode
 }) {
-	await redirectIfNoSession()
+  await redirectIfNoSession()
   const user = await api.user.getMe()
   const session = await auth()
 

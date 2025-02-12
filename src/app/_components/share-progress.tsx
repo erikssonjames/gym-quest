@@ -36,7 +36,7 @@ export default function ShareProgress() {
                 <p className="text-sm">Nice!</p>
               </div>
               <div className="bg-background/40 border py-3 px-5 rounded-full translate-x-10">
-              <p className="text-xs text-muted-foreground">2025-01-09 ~ 14:59</p>
+                <p className="text-xs text-muted-foreground">2025-01-09 ~ 14:59</p>
                 <p className="text-sm">Wow... Catching up to me soon :{')'}</p>
               </div>
               <div className="bg-background/40 border py-3 px-5 rounded-full translate-x-0">

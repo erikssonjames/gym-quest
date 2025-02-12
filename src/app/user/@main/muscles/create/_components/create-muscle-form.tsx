@@ -21,7 +21,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { type InsertMuscle, type InsertMuscleGroup, InsertMuscleGroupZod, InsertMuscleZod } from "@/server/db/schema/body";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useSearchParamsFn } from "@/hooks/use-search-params-fn";
 import { SearchParam } from "@/variables/url";
 import { toast } from "sonner";
@@ -139,8 +138,8 @@ export default function CreateMuscleForm() {
                       >
                         {field.value
                           ? muscleGroups?.find(
-                              (muscleGroup) => muscleGroup.id === field.value
-                            )?.name
+                            (muscleGroup) => muscleGroup.id === field.value
+                          )?.name
                           : "Select muscle group"}
                         <ChevronsUpDown className="opacity-50" />
                       </Button>
@@ -201,28 +200,28 @@ export default function CreateMuscleForm() {
                           </DialogContent>
                         </Dialog>
                       </div>
-                        <CommandList>
-                          <CommandEmpty>No muscle groups found.</CommandEmpty>
-                          <CommandGroup>
-                            {muscleGroups?.map((muscleGroup) => (
-                              <CommandItem
-                                value={muscleGroup.name}
-                                key={muscleGroup.name}
-                                onSelect={() => {
-                                  form.setValue("muscleGroupId", muscleGroup.id)
-                                }}
-                              >
-                                {muscleGroup.name}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    muscleGroup.id === field.value
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
+                      <CommandList>
+                        <CommandEmpty>No muscle groups found.</CommandEmpty>
+                        <CommandGroup>
+                          {muscleGroups?.map((muscleGroup) => (
+                            <CommandItem
+                              value={muscleGroup.name}
+                              key={muscleGroup.name}
+                              onSelect={() => {
+                                form.setValue("muscleGroupId", muscleGroup.id)
+                              }}
+                            >
+                              {muscleGroup.name}
+                              <Check
+                                className={cn(
+                                  "ml-auto",
+                                  muscleGroup.id === field.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>

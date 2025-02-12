@@ -72,23 +72,23 @@ export const { auth, handlers, signIn, signOut } = NextAuth(req => {
           req?.nextUrl.pathname.includes('credentials') &&
           req?.method === 'POST'
         ) {
-            if (user?.id && drizzleAdapter) {
-              const sessionToken = randomUUID()
-              const sessionMaxAge = 60 * 60 * 24 * 30; // 30 Days
-              const sessionExpiry = fromDate(sessionMaxAge)
+          if (user?.id && drizzleAdapter) {
+            const sessionToken = randomUUID()
+            const sessionMaxAge = 60 * 60 * 24 * 30; // 30 Days
+            const sessionExpiry = fromDate(sessionMaxAge)
 
-              await drizzleAdapter?.createSession?.({
-                expires: sessionExpiry,
-                sessionToken: sessionToken,
-                userId: user.id ?? ''
-              })
+            await drizzleAdapter?.createSession?.({
+              expires: sessionExpiry,
+              sessionToken: sessionToken,
+              userId: user.id ?? ''
+            })
 
-              await createCookie({
-                expireDate: sessionExpiry,
-                key: 'next-auth.session-token',
-                value: sessionToken
-              })
-            }
+            await createCookie({
+              expireDate: sessionExpiry,
+              key: 'next-auth.session-token',
+              value: sessionToken
+            })
+          }
         }
 
         return true
