@@ -118,7 +118,7 @@ function CompletedSetsComponent ({ sets }: { sets: CurrentSetSplit["completedSet
   if (sets.length === 0) return null
 
   return (
-    <div className="bg-card p-2 rounded-md">
+    <div className="bg-card p-2 rounded-md border">
       <Badge variant="outline" className="border-primary">Completed Sets</Badge>
       <div className="p-2 flex gap-2 flex-col">
         {sets.map(({ logs, set }) => (
@@ -165,7 +165,7 @@ function ActiveSetComponent ({ activeSet }: { activeSet: CurrentSetSplit["active
   const { logs, set } = activeSet
 
   return (
-    <div className="bg-card p-2 rounded-md">
+    <div className="bg-card p-2 rounded-md border">
       <Badge variant="default">Active Set</Badge>
       <div className="p-4">
         <div className="" key={set.id}>
@@ -209,7 +209,7 @@ function RemainingSetsComponent ({ sets }: { sets: CurrentSetSplit["remainingSet
   if (sets.length === 0) return null
 
   return (
-    <div className="bg-card p-2 rounded-md">
+    <div className="bg-card p-2 rounded-md border">
       <Badge variant="secondary">Remaining Sets</Badge>
       <div className="p-4">
         {sets.map(set => (

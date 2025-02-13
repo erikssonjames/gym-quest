@@ -77,7 +77,7 @@ function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSe
     >
       <div className="relative flex-grow rounded-md">
         <button 
-          className="absolute right-full top-0 bg-card/30 p-2 rounded-l-sm flex items-center gap-2 cursor-grab hover:bg-card/60 active:bg-primary/40"
+          className="absolute right-full top-0 bg-secondary/30 border p-2 rounded-l-sm flex items-center gap-2 cursor-grab hover:bg-secondary/60 active:bg-primary/40"
           type="button"
           ref={setDraggableNodeRef}
           {...listeners}
@@ -122,7 +122,7 @@ function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSe
               onClick={() => setMoreActionsOpen(true)}
             >
               <ChevronDown className="group-hover:hidden" />
-              <p className="opacity-0 absolute inset-0 mx-4 text-center group-hover:opacity-100 transition-all pt-2 bg-card/20 rounded-b-md">More Actions</p>
+              <p className="opacity-0 absolute inset-0 mx-4 text-center group-hover:opacity-100 transition-all pt-2 bg-secondary/20 rounded-b-md">More Actions</p>
             </Button>
           </div>
         ) : (

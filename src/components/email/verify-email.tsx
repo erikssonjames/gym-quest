@@ -29,17 +29,17 @@ export const VerifyEmailTemplate = ({
 }: VerifyEmailTemplateProps) => (
   <Html>
     <Head />
-    <Preview>Your login code for Linear</Preview>
+    <Preview>Your login code for GymQuest</Preview>
     <Body style={main}>
       <Container style={container}>
         <Img
           src={`${baseUrl}/static/linear-logo.png`}
           width="42"
           height="42"
-          alt="Linear"
+          alt="GymQuest"
           style={logo}
         />
-        <Heading style={heading}>Your login code for Linear</Heading>
+        <Heading style={heading}>Your login code for GymQuest</Heading>
         <Section style={buttonContainer}>
           <Button style={button} href={`${baseUrl}/signup/verify-email-link?t=${validationCode}&e=${email}`}>
             Login to Gym Quest

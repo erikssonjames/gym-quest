@@ -16,7 +16,7 @@ export default function ActiveWorkouts() {
   }
 
   return (
-    <div className="bg-card px-10 py-5 rounded-md w-full min-h-96 flex">
+    <div className="bg-card border px-10 py-5 rounded-md w-full min-h-96 flex">
       {!activeWorkout && (
         <div className="w-full flex flex-col items-center justify-center gap-6 flex-grow">
           <div className="flex gap-4 text-muted-foreground">

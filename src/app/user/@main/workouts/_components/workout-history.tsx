@@ -25,7 +25,7 @@ export default function WorkoutHistory () {
   const hasSessions = workoutSessions && workoutSessions.length > 0
 
   return (
-    <div className="w-full max-h-96 bg-card px-6 py-5 rounded-md">
+    <div className="w-full max-h-96 bg-card border px-6 py-5 rounded-md">
       {hasSessions && (
         <p className="font-semibold text-md">Workout History</p>
       )}

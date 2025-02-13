@@ -40,7 +40,7 @@ function CreateSetCollectionsForm({ setCollectionsIndex, setIndex, remove, numCo
   return (
     <div 
       className={cn(
-        "relative p-4 bg-card/20 rounded-md",
+        "relative p-4 bg-card/20 rounded-md border",
         setCollectionsIndex === 0 && "rounded-tl-none"
       )}
     >

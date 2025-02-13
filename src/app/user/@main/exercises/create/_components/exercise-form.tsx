@@ -178,13 +178,6 @@ export default function CreateExerciseForm() {
           <Button type="submit" className="flex-grow">
             {isPending ? <Loader2Icon className="size-6 animate-spin" /> : <>Create Exercise</>}
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => form.reset()}
-          >
-            {isPending ? <Loader2Icon className="size-6 animate-spin" /> : <>Reset</>}
-          </Button>
         </div>
       </form>
     </Form>

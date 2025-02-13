@@ -6,7 +6,7 @@ import {
   protectedProcedure
 } from "@/server/api/trpc";
 import { type NewUser, type NewAccount, users, accounts, userSettings, type NewUserSettings, verificationQueue, waitlists } from "@/server/db/schema/user";
-import { and, eq, lt, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { hashPassword, isPasswordValid } from "@/lib/hash";
 import { BORDER_RADIUS_ARRAY, COLOR_THEMES_ARRAY } from "@/variables/settings";
@@ -15,6 +15,7 @@ import { env } from "@/env";
 import { type TRPCContext } from "@/trpc/server";
 import { DateTime } from "luxon";
 import sendVerifyEmail from "@/lib/emailUtils";
+import { signIn } from "@/auth";
 
 type UserDetails = {email: string, password: string }
 
@@ -22,67 +23,72 @@ const createUserAccount = async ({
   email,
   password,
   ctx
-}: 
-    UserDetails & { ctx: TRPCContext }
+}: UserDetails & { ctx: TRPCContext }
 ): Promise<TRPCError | UserDetails & { userId: string }> => {
   const userExists = await ctx.db.query.users.findFirst({
     where: eq(users.email, email),
-  })
+  });
 
   if (userExists) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: 'Email is already used'
-    })
+      message: "Email is already used"
+    });
   }
 
   const transactionResponse: string | TRPCError = await ctx.db.transaction(async (transaction) => {
-    const newUser: NewUser = {
-      email,
-      password,
-    }
+    try {
+      const newUser: NewUser = { email, password };
 
-    const createdUser = await transaction
-      .insert(users)
-      .values(newUser)
-      .returning({ id: users.id })
-    const createdUserId = createdUser[0]?.id
-        
-    if (!createdUserId) {
-      return new TRPCError({
-        code: "BAD_REQUEST",
-        message: 'Something went wrong creating your user account.'
-      })
-    }
+      const createdUser = await transaction
+        .insert(users)
+        .values(newUser)
+        .returning({ id: users.id });
 
-    const newAccount: NewAccount = {
-      type: "credentials",
-      provider: 'credentials',
-      providerAccountId: '0',
-      userId: createdUserId
-    }
-    
-    const createdAccount = await transaction.insert(accounts).values(newAccount)
-    if (createdAccount.length === 0) {
+      const createdUserId = createdUser[0]?.id;
+      if (!createdUserId) {
+        console.log("createUserAccount.ERROR - User creation failed");
+        return new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Something went wrong creating your user account."
+        });
+      }
+
+      const newAccount: NewAccount = {
+        type: "credentials",
+        provider: "credentials",
+        providerAccountId: crypto.randomUUID(),
+        userId: createdUserId
+      };
+
+      const createdAccount = await transaction.insert(accounts).values(newAccount).returning();
+
+      if (createdAccount.length === 0) {
+        return new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Something went wrong creating your user account."
+        });
+      }
+
+      return createdUserId;
+    } catch (error) {
       return new TRPCError({
-        code: "BAD_REQUEST",
-        message: 'Something went wrong creating your user account.'
-      })
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database transaction failed."
+      });
     }
-        
-    return createdUserId
-  })
+  });
 
   if (transactionResponse instanceof TRPCError) {
-    return transactionResponse
+    throw transactionResponse;
   }
 
   return {
     userId: transactionResponse,
     email,
     password
-  }
-}
+  };
+};
 
 export const userRouter = createTRPCRouter({
   signup: publicProcedure
@@ -127,18 +133,10 @@ export const userRouter = createTRPCRouter({
         )
       }
 
-      const hashedPasssword = await hashPassword(password)
-
       const token = jwt.sign({
         email,
         password
       }, env.AUTH_EMAIL_SECRET + email, { expiresIn: 60 * 5 })
-
-      await ctx.db.insert(verificationQueue).values({
-        email,
-        password: hashedPasssword,
-        hashKey: token
-      })
 
       const { error } = await sendVerifyEmail({
         email,
@@ -151,6 +149,14 @@ export const userRouter = createTRPCRouter({
           message: 'Could not send the email. Please try again.'
         })
       }
+
+      const hashedPasssword = await hashPassword(password)
+
+      await ctx.db.insert(verificationQueue).values({
+        email,
+        password: hashedPasssword,
+        hashKey: token
+      })
 
       return
     }),
@@ -234,101 +240,111 @@ export const userRouter = createTRPCRouter({
     }),
 
   verifyEmail: publicProcedure
-    .input(z.object({
-      token: z.string(),
-      email: z.string().email()
-    }))
+    .input(
+      z.object({
+        token: z.string(),
+        email: z.string().email(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const { token, email } = input
-
+      const { token, email } = input;
+  
       try {
-        const decoded = jwt.verify(token, env.AUTH_EMAIL_SECRET + email)
-        if (decoded && typeof decoded !== 'string') {
-          const { email, password } = decoded as { email: string, password: string }
-
-          if (!email || !password) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Incorrect token.'
-            })
-          }
-
-          const result: UserDetails | TRPCError = 
-                        await ctx.db.transaction<UserDetails | TRPCError>(async (transaction) => {
-                        
-                          const storedDetails: UserDetails | undefined = await transaction.query.verificationQueue.findFirst({
-                            where: and(
-                              eq(verificationQueue.email, email),
-                              eq(verificationQueue.hashKey, token)
-                            ),
-                            columns: {
-                              email: true,
-                              password: true
-                            }
-                          })
-
-                          if (!storedDetails) {
-                            return new TRPCError({
-                              code: 'BAD_REQUEST',
-                              message: 'Could not verify email.'
-                            })
-                          }
-
-                          // 1 hour ago
-                          const currentTime = DateTime.now()
-                          const hourAgo = currentTime.minus({ hours: 1 }).toJSDate()
-
-                          await transaction.delete(verificationQueue).where(or(
-                            eq(verificationQueue.email, email),
-                            lt(verificationQueue.timeRequested, hourAgo)
-                          ))
-
-                          return storedDetails
-                        })
-
-          if (result instanceof TRPCError) throw result
-
-          const { email: storedEmail, password: storedPassword } = result
-
-          const validPassword = await isPasswordValid(
-            password,
-            storedPassword
-          )
-
-          if (!validPassword) {
-            throw new TRPCError({
-              code: 'INTERNAL_SERVER_ERROR',
-              message: 'Something went wrong. (2)'
-            })
-          }
-
-          await createUserAccount({
-            ctx,
-            email: storedEmail,
-            password: storedPassword
-          })
-
-          return {
-            password,
-            email
-          }
-        } else {
+        // 🔹 Verify JWT Token
+        const decoded = jwt.verify(token, env.AUTH_EMAIL_SECRET + email);
+  
+        if (!decoded || typeof decoded !== "object") {
           throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Invalid request.'
-          })
+            code: "FORBIDDEN",
+            message: "Invalid or expired token.",
+          });
         }
-      } catch (e) {
-        if (e instanceof TRPCError) {
-          throw e
-        } else {
+  
+        const { email: decodedEmail, password: decodedPassword } = decoded as {
+          email: string;
+          password: string;
+        };
+  
+        if (!decodedEmail || !decodedPassword) {
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Oops, something went wrong there!'
-          })
+            code: "BAD_REQUEST",
+            message: "Token payload is missing required fields.",
+          });
         }
+  
+        // 🔹 Verify Email in Database
+        const transactionResult = await ctx.db.transaction<
+          UserDetails | TRPCError
+        >(async (transaction) => {
+          const storedDetails = await transaction.query.verificationQueue.findFirst({
+            where: and(
+              eq(verificationQueue.email, decodedEmail),
+              eq(verificationQueue.hashKey, token)
+            ),
+            columns: { email: true, password: true },
+          });
+  
+          if (!storedDetails) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Email verification failed. Invalid or expired token.",
+            });
+          }
+  
+          await transaction.delete(verificationQueue).where(eq(verificationQueue.email, decodedEmail));
+          return storedDetails;
+        });
+  
+        if (transactionResult instanceof TRPCError) {
+          throw transactionResult;
+        }
+  
+        const { email: storedEmail, password: storedPassword } = transactionResult;
+  
+        // 🔹 Validate Password
+        const isPasswordCorrect = await isPasswordValid(decodedPassword, storedPassword);
+        if (!isPasswordCorrect) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid credentials. Please try again.",
+          });
+        }
+  
+        // 🔹 Create User Account
+        const createdUser = await createUserAccount({
+          ctx,
+          email: storedEmail,
+          password: storedPassword,
+        });
+  
+        if (createdUser instanceof TRPCError) {
+          throw createdUser;
+        }
+
+        await signIn("credentials", {
+          redirect: false, // Prevent automatic redirection
+          email: storedEmail,
+          password: storedPassword,
+        });
+  
+        return {
+          message: "Email verified successfully!",
+          email: storedEmail,
+        };
+      } catch (error) {
+        console.error("Verify Email Error:", error);
+  
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+  
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "An unexpected error occurred while verifying the email.",
+        });
       }
     }),
+  
 
   joinWaitlist: publicProcedure
     .input(z.object({
@@ -349,6 +365,19 @@ export const userRouter = createTRPCRouter({
       }
 
       await ctx.db.insert(waitlists).values({ email })
+    }),
+
+  checkIfUsernameIsAvailable: protectedProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const foundUsers = await ctx.db.query.users.findMany({
+        where: eq(users.username, input),
+        columns: {
+          username: true
+        }
+      })
+
+      return { available: foundUsers.length === 0, username: input }
     })
 });
 

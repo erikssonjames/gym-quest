@@ -5,12 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { api } from "@/trpc/react";
 import { ArrowLeft, Loader2Icon } from "lucide-react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Status = 'verifying-token' | 'error-verifying-token' | 
-              'signing-in' | 'error-signing-in' | 'error' | 'idle'
+  'signing-in' | 'error-signing-in' | 'error' | 'idle'
 
 export default function VerifyEmail() {
   const searchParams = useSearchParams()
@@ -23,7 +22,7 @@ export default function VerifyEmail() {
   const handleSubmitTokenManually = async () => {
     if (!token || !email) return router.replace('/signup?redirect=true')
       
-    let res: { email: string, password: string } | undefined;
+    let res: { email: string, message: string } | undefined;
     try {
       setStatus('verifying-token')
       res = await mutateAsync({
@@ -38,18 +37,6 @@ export default function VerifyEmail() {
     if (!res) {
       setStatus('error')
       return
-    }
-    
-    try {
-      setStatus('signing-in')
-      await signIn('credentials', {
-        redirect: false,
-        ...res
-      })
-
-      router.replace('/user')
-    } catch (e) {
-      setStatus('error-signing-in')
     }
   }
 
@@ -88,7 +75,7 @@ export default function VerifyEmail() {
                 <>Submit token</>
               )} 
 
-              {status === 'error-verifying-token' && (
+              {status === 'verifying-token' && (
                 <>Verifying <Loader2Icon className="ms-2 size-4 animate-spin" /></>
               )}
               {status === 'error-verifying-token' && (
