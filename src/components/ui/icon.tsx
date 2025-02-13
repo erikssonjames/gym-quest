@@ -33,7 +33,7 @@ export default function Icon ({ displayText }: IconProps) {
         width={scrolled ? 30 : 60}
         height={scrolled ? 30 : 60}
         fill={false}
-        className="object-contain transition-all duration-200"
+        className="object-contain transition-all duration-200 size-8"
       />
       {displayText && (
         <div className={cn(

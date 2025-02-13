@@ -16,7 +16,7 @@ export default async function Home() {
       hammersmith.className
     )}>
       <Navbar />
-      <section className="h-screen max-h-[1200px] flex items-center justify-center relative pt-12">
+      <section className="h-screen max-h-[1200px] flex items-center justify-center relative md:pt-12">
         <div className="overflow-hidden h-96 w-full absolute top-0 left-0">
           <Meteors />
         </div>

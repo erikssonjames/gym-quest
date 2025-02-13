@@ -8,15 +8,14 @@ import { motion } from "framer-motion";
 
 export default function ShareProgress() {
   return (
-    <div className="max-h-[1500px] relative">
+    <div className="max-h-[1500px] relative overflow-hidden px-4">
 
       <div className="w-full py-20">
         <h1 className="text-center text-xl">Share progress with your friends.</h1>
       </div>
 
       <div className="w-full relative z-10 pb-40 flex justify-center">
-
-        <div className="min-w-96 h-96 border rounded-lg bg-purple-400/10 backdrop-blur-sm flex flex-col">
+        <div className="md:min-w-96 w-100 h-96 border rounded-lg bg-purple-400/10 backdrop-blur-sm flex flex-col">
           <div className="w-full flex items-center p-4 gap-4">
             <div className="rounded-full bg-background/40 p-4">
               <Trophy className="text-amber-300" />

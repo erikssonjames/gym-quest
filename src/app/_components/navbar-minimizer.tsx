@@ -24,10 +24,13 @@ export default function NavbarMinimizer ({ children }: NavbarMinimizerProps) {
   }, []);
   
   return (
-    <nav className={cn(
-      "fixed left-0 right-0 flex justify-between items-center z-50 transition-all duration-200",
-      scrolled ? "p-4" : "p-10"
-    )}>
+    <nav 
+      className={cn(
+        "fixed left-0 right-0 top-0 flex justify-between items-center z-50 transition-all duration-200",
+        scrolled ? "p-4" : "p-10"
+      )}
+      style={{ maxWidth: '100vw' }}
+    >
       {children}
     </nav>
   )

@@ -2,11 +2,13 @@ import "@/styles/globals.css";
 import { TRPCReactProvider } from "@/trpc/react";
 import { ThemeProvider } from "@/components/utilts/theme-provider";
 import { cn } from "@/lib/utils";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { inter } from "@/styles/fonts";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata: Metadata = {
   title: "Gym Quest",
@@ -21,8 +23,14 @@ export const metadata: Metadata = {
       { rel: 'manifest', url: '/icon/site.webmanifest' },
       { rel: 'shortcut icon', url: '/icon/favicon.ico' },
     ],
-  },
+  }
 };
+
+export const viewport: Viewport = {
+  initialScale: 1,
+  minimumScale: 1,
+  width: "device-width"
+}
 
 export default async function RootLayout({
   children,
@@ -53,6 +61,8 @@ export default async function RootLayout({
             </NextIntlClientProvider>
           </ThemeProvider>
         </TRPCReactProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

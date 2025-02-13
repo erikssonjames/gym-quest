@@ -11,7 +11,7 @@ export default async function Navbar () {
       <div>
         <Icon displayText />
       </div>
-      <div className="flex gap-4 px-6">
+      <div className="flex gap-4 md:px-6">
         <ProfileButton session={session}/>
       </div>
     </NavbarMinimizer>

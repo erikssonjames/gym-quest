@@ -39,7 +39,7 @@ export default function WelcomeText() {
 
   return (
     <div className="flex justify-start flex-col">
-      <h1 className="text-7xl text-primary font-bold">Working out,</h1>
+      <h1 className="text-5xl md:text-7xl text-primary font-bold">Working out,</h1>
       <motion.div
         transition={{
           delay: 1,
@@ -53,7 +53,7 @@ export default function WelcomeText() {
           y: [null, -5, 20, 0]
         }}
       >
-        <h1 className="text-5xl">
+        <h1 className="text-3xl md:text-5xl">
           But with a 
           <motion.span
             className='origin-top-right inline-block relative translate-x-4 overflow-hidden'
