@@ -33,9 +33,9 @@ export const VerifyEmailTemplate = ({
     <Body style={main}>
       <Container style={container}>
         <Img
-          src={`${baseUrl}/static/linear-logo.png`}
-          width="42"
-          height="42"
+          src={`${baseUrl}/public/icon/favicon-32x32.png`}
+          width="32"
+          height="32"
           alt="GymQuest"
           style={logo}
         />
@@ -47,7 +47,7 @@ export const VerifyEmailTemplate = ({
         </Section>
         <Container style={container}>
           <Text style={paragraph}>
-            This link and code will only be valid for the next 5 minutes. If the
+            This link and code will only be valid for the next 24 hours. If the
             link does not work, you can use the login verification code directly:
           </Text>
           <code style={code}>{validationCode}</code>

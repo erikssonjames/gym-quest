@@ -11,7 +11,7 @@ export default function CreateWorkoutPage () {
 
   return (
     <>
-      <div className="flex flex-col items-start md:mx-8 px-8">
+      <div className="flex flex-col items-start md:px-8">
         <Button
           onClick={() => router.replace("/user/workouts/manage")}
           size="sm" 
@@ -24,7 +24,7 @@ export default function CreateWorkoutPage () {
         <H3 text="Create workout" />
       </div>
 
-      <div className="flex-grow md:mx-8 md:mb-8 my-4 mx-4 py-4 min-h-0">
+      <div className="flex-grow md:mb-8 my-4 mx-4 py-4 min-h-0">
         <CreateWorkoutForm />
       </div>
     </>

@@ -45,12 +45,12 @@ function CreateSetCollectionsForm({ setCollectionsIndex, setIndex, remove, numCo
       )}
     >
       <div className="w-full flex gap-2 items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Controller
             control={control}
             name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.exerciseId`}
             render={({field}) => (
-              <div className="space-y-2 min-w-60">
+              <div className="md:space-y-2 min-w-60">
                 <p className="text-xs text-muted-foreground ps-3">Exercise</p>
 
                 <SelectExercise
@@ -66,67 +66,69 @@ function CreateSetCollectionsForm({ setCollectionsIndex, setIndex, remove, numCo
             )}
           />
 
-          <div className="space-y-2 ps-6">
-            <p className="text-xs text-muted-foreground">Sets</p>
-            <Input 
-              value={numberOfSets} 
-              onChange={(e) => setNumberOfSets(isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
-              className="w-12"  
-            />
-          </div>
+          <div className="flex">
+            <div className="space-y-2 ps-6">
+              <p className="text-xs text-muted-foreground">Sets</p>
+              <Input 
+                value={numberOfSets} 
+                onChange={(e) => setNumberOfSets(isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
+                className="w-12"  
+              />
+            </div>
 
-          <div className="flex gap-2 flex-wrap">
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.reps`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Reps"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
+            <div className="flex gap-2 flex-wrap">
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.reps`}
+                render={({field}) => (
+                  <IntegerSelectArray
+                    label="Reps"
+                    onSetValues={field.onChange}
+                    numberOfSets={numberOfSets}
+                    initialValues={field.value}
+                  />
+                )}
+              />
 
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.weight`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Weight (kg)"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.weight`}
+                render={({field}) => (
+                  <IntegerSelectArray
+                    label="Weight (kg)"
+                    onSetValues={field.onChange}
+                    numberOfSets={numberOfSets}
+                    initialValues={field.value}
+                  />
+                )}
+              />
 
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.restTime`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Rest Time (s)"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.restTime`}
+                render={({field}) => (
+                  <IntegerSelectArray
+                    label="Rest Time (s)"
+                    onSetValues={field.onChange}
+                    numberOfSets={numberOfSets}
+                    initialValues={field.value}
+                  />
+                )}
+              />
 
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.duration`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Set Duration (s)"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.duration`}
+                render={({field}) => (
+                  <IntegerSelectArray
+                    label="Set Duration (s)"
+                    onSetValues={field.onChange}
+                    numberOfSets={numberOfSets}
+                    initialValues={field.value}
+                  />
+                )}
+              />
+            </div>
           </div>
         </div>
 

@@ -147,7 +147,7 @@ export default function CreateWorkoutForm() {
         onSubmit={form.handleSubmit(onSubmitWorkout)}
         className="gap-6 flex flex-col min-h-0 h-full"
       >
-        <div className="flex gap-6 items-center px-8">
+        <div className="flex gap-6 items-center md:px-4">
           <FormField
             control={form.control}
             name="name"
@@ -187,7 +187,7 @@ export default function CreateWorkoutForm() {
           control={form.control}
           name="description"
           render={({ field }) => (
-            <FormItem className="px-8">
+            <FormItem className="md:px-4">
               <FormControl>
                 <Textarea placeholder="Description" {...field} />
               </FormControl>
@@ -197,7 +197,7 @@ export default function CreateWorkoutForm() {
         />
 
         <div 
-          className="w-full px-8" 
+          className="w-full md:px-4" 
           style={{ minHeight: 'inherit' }}
         >
           <SelectExercise onSelectExercise={onAddSetCollection} />
@@ -210,7 +210,7 @@ export default function CreateWorkoutForm() {
             onDragEnd={onSwapSetCollection}
           >
             <SortableContext items={fields.map(f => f.id)}>
-              <ScrollContainerFadingEdges className="px-8 min-h-0 h-full py-1">
+              <ScrollContainerFadingEdges className="pl-8 min-h-0 h-full py-1">
                 {fields.map((field, setIndex) => (
                   <CreateSetForm 
                     key={field.id} 

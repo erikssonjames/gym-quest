@@ -28,7 +28,7 @@ export default function SelectExercise (
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="min-w-[700px] p-0" align="start">
+      <PopoverContent className="md:min-w-[700px] p-0" align="start">
         <Command>
           <div className="relative w-full">
             <CommandInput placeholder="Search exercises..." />

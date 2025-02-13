@@ -118,7 +118,7 @@ export const userRouter = createTRPCRouter({
       })
 
       const currentTime = DateTime.now()
-      const fiveMinutesAgo = currentTime.minus({ minutes: 5 }).toJSDate()
+      const fiveMinutesAgo = currentTime.minus({ hour: 24  }).toJSDate()
 
       if (existsInVerificationQueue && existsInVerificationQueue.timeRequested > fiveMinutesAgo) {
         throw new TRPCError({
@@ -136,7 +136,7 @@ export const userRouter = createTRPCRouter({
       const token = jwt.sign({
         email,
         password
-      }, env.AUTH_EMAIL_SECRET + email, { expiresIn: 60 * 5 })
+      }, env.AUTH_EMAIL_SECRET + email, { expiresIn: 60 * 60 * 24 })
 
       const { error } = await sendVerifyEmail({
         email,
