@@ -16,6 +16,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { type PROVIDER } from "@/variables/auth";
 import { toast } from "sonner";
+import { Loader2Icon } from "lucide-react";
+import { useState } from "react";
 
 const formSchema = z.object({
   usernameOrEmail: z.string().min(3, {
@@ -25,6 +27,8 @@ const formSchema = z.object({
 })
 
 export default function SignInForm({ providers }: { providers: { id: PROVIDER, name: string }[] }) {
+  const [isPending, setIsPending] = useState(false)
+
   const router = useRouter()
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,6 +39,7 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
   })
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsPending(true)
     const { password, usernameOrEmail } = values
 
     try {
@@ -46,9 +51,9 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
       })
       
       if (res?.error) {
-        toast.error('Error', {
-          description: 'Something went wrong!',
-        })
+        toast.error('Invalid login details.')
+        form.setError("password", { message: "" })
+        form.setError("usernameOrEmail",  { message: "" })
       } else {
         router.push('/user')
       }
@@ -65,6 +70,7 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
 
       toast.error(title, { description })
     }
+    setIsPending(false)
   }
 
   const providerIcon = (id: string) => {
@@ -80,12 +86,14 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
   }
 
   const onProviderSignIn = async (id: string) => {
+    setIsPending(true)
     try {
       await signIn(id, {
         redirect: false
       })
     } catch (e) {
     }
+    setIsPending(false)
   }
 
   return (
@@ -121,7 +129,13 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
               </FormItem>
             )}
           />
-          <Button className="w-full">Sign In</Button>
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? (
+              <Loader2Icon className="size-6 animate-spin" />
+            ) : (
+              <>Sign Up</>
+            )}
+          </Button>
         </form>
       </Form>
       <div className='my-8 flex items-center'>

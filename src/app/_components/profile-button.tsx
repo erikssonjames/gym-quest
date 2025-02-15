@@ -11,7 +11,7 @@ export default function ProfileButton ({ session }: { session: Session | null })
       {session && (
         <Button asChild>
           <Link href="/user">
-                        Dashboard
+            Dashboard
           </Link>
         </Button>
       )}

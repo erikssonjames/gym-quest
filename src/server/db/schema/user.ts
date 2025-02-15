@@ -106,16 +106,12 @@ export const userSettings = pgTable("userSettings", {
 })
 
 export const verificationQueue = pgTable("verificationQueue", {
-  email: varchar("email", { length: 255 })
-    .unique()
-    .primaryKey()
-    .notNull(),
-  password: varchar("password").notNull(),
   timeRequested: timestamp("timeRequested", {
     mode: "date",
     withTimezone: true
   }).defaultNow().notNull(),
-  hashKey: varchar("hashKey").unique().notNull()
+  token: varchar("token").unique().notNull(),
+  email: varchar("email").notNull()
 });
 
 export const waitlists = pgTable("waitlist", {

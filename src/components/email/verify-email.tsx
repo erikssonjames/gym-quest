@@ -1,135 +1,143 @@
 import {
   Body,
-  Button,
+  Column,
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Img,
-  Link,
   Preview,
+  Row,
   Section,
   Text,
-} from "@react-email/components";
-import * as React from "react";
+} from '@react-email/components';
+import * as React from 'react';
 
-interface VerifyEmailTemplateProps {
-  validationCode: string;
-  email: string
+interface SlackConfirmEmailProps {
+  code: string;
 }
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+  : '';
 
-export const VerifyEmailTemplate = ({
-  validationCode,
-  email
-}: VerifyEmailTemplateProps) => (
+export const SignUpConfirmEmail = ({ code }: SlackConfirmEmailProps) => (
   <Html>
     <Head />
-    <Preview>Your login code for GymQuest</Preview>
     <Body style={main}>
+      <Preview>Confirm your email address</Preview>
       <Container style={container}>
-        <Img
-          src={`${baseUrl}/public/icon/favicon-32x32.png`}
-          width="32"
-          height="32"
-          alt="GymQuest"
-          style={logo}
-        />
-        <Heading style={heading}>Your login code for GymQuest</Heading>
-        <Section style={buttonContainer}>
-          <Button style={button} href={`${baseUrl}/signup/verify-email-link?t=${validationCode}&e=${email}`}>
-            Login to Gym Quest
-          </Button>
+        <Section style={logoContainer}>
+          <Img
+            src={`${baseUrl}/public/icon/favicon-32x32.png`}
+            width="120"
+            height="36"
+            alt="GymQuest"
+          />
         </Section>
-        <Container style={container}>
-          <Text style={paragraph}>
-            This link and code will only be valid for the next 24 hours. If the
-            link does not work, you can use the login verification code directly:
+        <Heading style={h1}>Confirm your email address</Heading>
+        <Text style={heroText}>
+          Your confirmation code is below - enter it in your open browser window
+          and we&apos;ll help you get signed in.
+        </Text>
+
+        <Section style={codeBox}>
+          <Text style={confirmationCodeText}>{code}</Text>
+        </Section>
+
+        <Text style={text}>
+          If you didn&apos;t request this email, there&apos;s nothing to worry about, you
+          can safely ignore it.
+        </Text>
+
+        <Section>
+          <Row style={footerLogos}>
+            <Column style={{ width: '66%' }}>
+              <Img
+                src={`${baseUrl}/public/icon/favicon-32x32.png`}
+                width="120"
+                height="36"
+                alt="GymQuest"
+              />
+            </Column>
+          </Row>
+        </Section>
+
+        <Section>
+          <Text style={footerText}>
+            ©{new Date().getFullYear()} Gym Quest. <br />
+            <br />
+            All rights reserved.
           </Text>
-          <code style={code}>{validationCode}</code>
-        </Container>
-        <Hr style={hr} />
-        <Link href={baseUrl} style={reportLink}>
-          Gym Quest
-        </Link>
+        </Section>
       </Container>
     </Body>
   </Html>
 );
 
-export default VerifyEmailTemplate;
+export default SignUpConfirmEmail;
 
-const logo = {
-  borderRadius: 21,
-  width: 42,
-  height: 42,
+const footerText = {
+  fontSize: '12px',
+  color: '#b7b7b7',
+  lineHeight: '15px',
+  textAlign: 'left' as const,
+  marginBottom: '50px',
+};
+
+const footerLogos = {
+  marginBottom: '32px',
+  paddingLeft: '8px',
+  paddingRight: '8px',
+  width: '100%',
 };
 
 const main = {
-  backgroundColor: "#ffffff",
+  backgroundColor: '#ffffff',
+  margin: '0 auto',
   fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
+    "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
 };
 
 const container = {
-  margin: "0 auto",
-  padding: "20px 0 48px",
-  maxWidth: "560px",
+  margin: '0 auto',
+  padding: '0px 20px',
 };
 
-const heading = {
-  fontSize: "24px",
-  letterSpacing: "-0.5px",
-  lineHeight: "1.3",
-  fontWeight: "400",
-  color: "#484848",
-  padding: "17px 0 0",
+const logoContainer = {
+  marginTop: '32px',
 };
 
-const paragraph = {
-  margin: "0 0 15px",
-  fontSize: "15px",
-  lineHeight: "1.4",
-  color: "#3c4149",
+const h1 = {
+  color: '#1d1c1d',
+  fontSize: '36px',
+  fontWeight: '700',
+  margin: '30px 0',
+  padding: '0',
+  lineHeight: '42px',
 };
 
-const buttonContainer = {
-  padding: "27px 0 27px",
+const heroText = {
+  fontSize: '20px',
+  lineHeight: '28px',
+  marginBottom: '30px',
 };
 
-const button = {
-  backgroundColor: "#5e6ad2",
-  borderRadius: "3px",
-  fontWeight: "600",
-  color: "#fff",
-  fontSize: "15px",
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "block",
-  padding: "11px 23px",
+const codeBox = {
+  background: 'rgb(245, 244, 245)',
+  borderRadius: '4px',
+  marginBottom: '30px',
+  padding: '40px 10px',
 };
 
-const reportLink = {
-  fontSize: "14px",
-  color: "#b4becc",
+const confirmationCodeText = {
+  fontSize: '30px',
+  textAlign: 'center' as const,
+  verticalAlign: 'middle',
 };
 
-const hr = {
-  borderColor: "#dfe1e4",
-  margin: "42px 0 26px",
-};
-
-const code = {
-  fontFamily: "monospace",
-  fontWeight: "700",
-  padding: "1px 4px",
-  backgroundColor: "#dfe1e4",
-  letterSpacing: "-0.3px",
-  fontSize: "21px",
-  borderRadius: "4px",
-  color: "#3c4149",
+const text = {
+  color: '#000',
+  fontSize: '14px',
+  lineHeight: '24px',
 };

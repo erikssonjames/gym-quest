@@ -11,7 +11,9 @@ import { toast } from "sonner"
 
 export default function Create () {
   const router = useRouter()
-  const { mutateAsync: createUser, isPending: creatingUserPending } = api.user.createUser.useMutation()
+  const { mutateAsync: createUser, isPending: creatingUserPending } = api.user.createUser.useMutation({
+    onSuccess: () => router.refresh()
+  })
   const { mutate: checkUsername, isPending, data } = api.user.checkIfUsernameIsAvailable.useMutation()
 
   const [username, setUsername] = useState("")
@@ -23,8 +25,6 @@ export default function Create () {
     toast.success('Success!', {
       description: 'Successfully created your user account at Gym Quest. Lets get started!'
     })
-
-    router.replace("/user")
   }
 
   useEffect(() => {
@@ -40,11 +40,19 @@ export default function Create () {
         </div>
 
         <div className="space-y-2">
-          <Input 
-            placeholder="Choose a username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
+          <div className="relative">
+            <Input
+              disabled={creatingUserPending}
+              placeholder="Choose a username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            {isPending && (
+              <div className="absolute right-2 top-0 h-full flex items-center">
+                <Loader2 className="animate-spin size-4 text-primary" />
+              </div>
+            )}
+          </div>
           <div className="h-5 w-full">
             {data && !data.available && !isPending && (
               <p className="text-sm text-destructive">Username {data.username} is taken.</p>

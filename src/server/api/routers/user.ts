@@ -6,16 +6,17 @@ import {
   protectedProcedure
 } from "@/server/api/trpc";
 import { type NewUser, type NewAccount, users, accounts, userSettings, type NewUserSettings, verificationQueue, waitlists } from "@/server/db/schema/user";
-import { and, eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { hashPassword, isPasswordValid } from "@/lib/hash";
+import { hashPassword } from "@/lib/hash";
 import { BORDER_RADIUS_ARRAY, COLOR_THEMES_ARRAY } from "@/variables/settings";
 import jwt from 'jsonwebtoken'
 import { env } from "@/env";
 import { type TRPCContext } from "@/trpc/server";
-import { DateTime } from "luxon";
 import sendVerifyEmail from "@/lib/emailUtils";
-import { signIn } from "@/auth";
+import crypto from "crypto"
+import { emailLimiter } from "@/server/limiters";
+import { isBefore, subHours } from "date-fns";
 
 type UserDetails = {email: string, password: string }
 
@@ -90,77 +91,15 @@ const createUserAccount = async ({
   };
 };
 
+const generateSecureCode = () => {
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += crypto.randomInt(0, 10).toString()
+  }
+  return code
+}
+
 export const userRouter = createTRPCRouter({
-  signup: publicProcedure
-    .input(z.object({ 
-      email: z.string().email(),
-      password: z.string().min(8),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const { password, email } = input
-
-      const userExists = await ctx.db.query.users.findFirst({
-        where: eq(users.email, email)
-      })
-
-      if (userExists) {
-        throw new TRPCError({
-          code: 'CONFLICT',
-          message: 'Email is already used.'
-        })
-      }
-
-      const existsInVerificationQueue = await ctx.db.query.verificationQueue.findFirst({
-        where: eq(verificationQueue.email, email),
-        columns: {
-          timeRequested: true
-        }
-      })
-
-      const currentTime = DateTime.now()
-      const fiveMinutesAgo = currentTime.minus({ hour: 24  }).toJSDate()
-
-      if (existsInVerificationQueue && existsInVerificationQueue.timeRequested > fiveMinutesAgo) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'You have a pending verification in your email.'
-        })
-      }
-
-      if (existsInVerificationQueue) {
-        await ctx.db.delete(verificationQueue).where(
-          eq(verificationQueue.email, email)
-        )
-      }
-
-      const token = jwt.sign({
-        email,
-        password
-      }, env.AUTH_EMAIL_SECRET + email, { expiresIn: 60 * 60 * 24 })
-
-      const { error } = await sendVerifyEmail({
-        email,
-        token
-      })
-
-      if (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Could not send the email. Please try again.'
-        })
-      }
-
-      const hashedPasssword = await hashPassword(password)
-
-      await ctx.db.insert(verificationQueue).values({
-        email,
-        password: hashedPasssword,
-        hashKey: token
-      })
-
-      return
-    }),
-
   createUser: protectedProcedure
     .input(z.object({
       username: z.string().min(3)
@@ -242,95 +181,70 @@ export const userRouter = createTRPCRouter({
   verifyEmail: publicProcedure
     .input(
       z.object({
-        token: z.string(),
+        code: z.string().length(6),
         email: z.string().email(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { token, email } = input;
-  
-      try {
-        // 🔹 Verify JWT Token
-        const decoded = jwt.verify(token, env.AUTH_EMAIL_SECRET + email);
-  
-        if (!decoded || typeof decoded !== "object") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Invalid or expired token.",
-          });
-        }
-  
-        const { email: decodedEmail, password: decodedPassword } = decoded as {
-          email: string;
-          password: string;
-        };
-  
-        if (!decodedEmail || !decodedPassword) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Token payload is missing required fields.",
-          });
-        }
-  
-        // 🔹 Verify Email in Database
-        const transactionResult = await ctx.db.transaction<
-          UserDetails | TRPCError
-        >(async (transaction) => {
-          const storedDetails = await transaction.query.verificationQueue.findFirst({
-            where: and(
-              eq(verificationQueue.email, decodedEmail),
-              eq(verificationQueue.hashKey, token)
-            ),
-            columns: { email: true, password: true },
-          });
-  
-          if (!storedDetails) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Email verification failed. Invalid or expired token.",
-            });
+      if (ctx.session?.user) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Already signed in",
+        })
+      }
+
+      const { code, email } = input;
+      
+      const pendingRequests = await ctx.db.query.verificationQueue.findMany({
+        where: eq(verificationQueue.email, email)
+      })
+
+      const date24HoursAgo = subHours(new Date(), 24)
+      const invalidPendingRequests = pendingRequests.filter(r => isBefore(r.timeRequested, date24HoursAgo)).map(r => r.token)
+      const validPendingRequests = pendingRequests.filter(r => !invalidPendingRequests.some(token => token === r.token))
+
+      await ctx.db.delete(verificationQueue).where(inArray(verificationQueue.token, invalidPendingRequests))
+
+      let decodedEmail = '';
+      let decodedHashedPassword = '';
+      for (const request of validPendingRequests) {
+        try {
+          const decoded = jwt.verify(request.token, env.AUTH_EMAIL_SECRET + code);
+          if (decoded && typeof decoded === 'object') {
+            const { email: tokenEmail, hashedPassword: tokenPassword } = decoded as { email: string; hashedPassword: string };
+            if (tokenEmail === email) {
+              decodedEmail = tokenEmail;
+              decodedHashedPassword = tokenPassword;
+              break;
+            }
           }
-  
-          await transaction.delete(verificationQueue).where(eq(verificationQueue.email, decodedEmail));
-          return storedDetails;
+        } catch (err) {
+          // Optionally log error per token, but continue with the loop.
+          continue;
+        }
+      }
+      
+
+      if (!decodedEmail || !decodedHashedPassword) {
+        await ctx.db.delete(verificationQueue).where(inArray(verificationQueue.token, invalidPendingRequests))
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Invalid or expired token.",
         });
-  
-        if (transactionResult instanceof TRPCError) {
-          throw transactionResult;
-        }
-  
-        const { email: storedEmail, password: storedPassword } = transactionResult;
-  
-        // 🔹 Validate Password
-        const isPasswordCorrect = await isPasswordValid(decodedPassword, storedPassword);
-        if (!isPasswordCorrect) {
-          throw new TRPCError({
-            code: "UNAUTHORIZED",
-            message: "Invalid credentials. Please try again.",
-          });
-        }
-  
+      }
+
+
+      try {
         // 🔹 Create User Account
         const createdUser = await createUserAccount({
           ctx,
-          email: storedEmail,
-          password: storedPassword,
+          email: decodedEmail,
+          password: decodedHashedPassword,
         });
   
         if (createdUser instanceof TRPCError) {
           throw createdUser;
         }
-
-        await signIn("credentials", {
-          redirect: false, // Prevent automatic redirection
-          email: storedEmail,
-          password: storedPassword,
-        });
-  
-        return {
-          message: "Email verified successfully!",
-          email: storedEmail,
-        };
       } catch (error) {
         console.error("Verify Email Error:", error);
   
@@ -343,8 +257,62 @@ export const userRouter = createTRPCRouter({
           message: "An unexpected error occurred while verifying the email.",
         });
       }
+
+      await ctx.db.delete(verificationQueue).where(eq(verificationQueue.email, email))
     }),
   
+  signUp: publicProcedure
+    .input(z.object({
+      email: z.string().email(),
+      password: z.string().min(8)
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session?.user) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Already signed in",
+        })
+      }
+
+      const { email, password } = input
+      try {
+        await emailLimiter.consume(email)
+      } catch (rejRes) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many requests, please try again later."
+        })
+      }
+
+      const userExists = (await ctx.db.query.users.findMany({
+        where: eq(users.email, email)
+      })).length > 0
+
+      if (userExists) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "A user with that email is already registered."
+        })
+      }
+
+      const code = generateSecureCode()
+      const hashedPassword = await hashPassword(password)
+
+      const token = jwt.sign({ email, hashedPassword }, env.AUTH_EMAIL_SECRET + code, { 
+        expiresIn: 60 * 60 * 24 
+      })
+
+      await ctx.db.insert(verificationQueue).values({ token, email })
+
+      const { error } = await sendVerifyEmail({ email, code })
+
+      if (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Could not send the email. Please try again.'
+        })
+      }
+    }),
 
   joinWaitlist: publicProcedure
     .input(z.object({
@@ -378,6 +346,6 @@ export const userRouter = createTRPCRouter({
       })
 
       return { available: foundUsers.length === 0, username: input }
-    })
+    }),
 });
 

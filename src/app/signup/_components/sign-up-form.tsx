@@ -4,8 +4,6 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, Form } from "
 
 import { AuthError, CredentialsSignin } from "next-auth";
 
-import { useRouter } from "next/navigation";
-
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -14,6 +12,8 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
+import { TRPCClientError } from "@trpc/client";
+import type { SignInData } from "../page";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -29,11 +29,12 @@ const formSchema = z.object({
   }
 })
 
-export default function SignUpForm() {
-  const router = useRouter()
-
+export default function SignUpForm(
+  { onSuccessfulSignUpForm }:
+  { onSuccessfulSignUpForm: (data: SignInData) => void }
+) {
   const utils = api.useUtils()
-  const { mutateAsync, isPending } = api.user.signup.useMutation({
+  const { mutateAsync, isPending } = api.user.signUp.useMutation({
     async onSuccess() {
       await utils.user.getMe.invalidate()
     }
@@ -53,7 +54,7 @@ export default function SignUpForm() {
 
     try {
       await mutateAsync({ email, password })
-      router.push(`/signup/verify-email?e=${email}`)
+      onSuccessfulSignUpForm({ email, password })
     } catch(error) {
       const title = 'Something went wrong!'
       let description = ''
@@ -61,12 +62,14 @@ export default function SignUpForm() {
         description = error.message
       } else if (error instanceof CredentialsSignin) {
         description = error.message
+      } else if (error instanceof TRPCClientError) {
+        description = error.message
       } else {
         console.error(error)
         description = 'Oops, looks like GymQuest is not working as intended at the moment.'
       }
 
-      toast.error(title, { description })
+      toast.error(title, { description, closeButton: true, duration: 1000 * 20 })
     }
   }
 
@@ -82,7 +85,7 @@ export default function SignUpForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder='James@GymQuester.com' {...field} />
+                  <Input placeholder='zyzz@legend.com' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -120,7 +123,7 @@ export default function SignUpForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (
               <Loader2Icon className="size-6 animate-spin" />
             ) : (

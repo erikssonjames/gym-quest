@@ -75,6 +75,10 @@ const config = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		keyframes: {
+        'caret-blink': {
+          "0%,70%,100%": { opacity: "1" },
+          "20%,50%": { opacity: "0" },
+        },
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -108,7 +112,8 @@ const config = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-  			'meteor-effect': 'meteor 5s linear infinite'
+  			'meteor-effect': 'meteor 5s linear infinite',
+        "caret-blink": "caret-blink 1.25s ease-out infinite",
   		}
   	}
   },
