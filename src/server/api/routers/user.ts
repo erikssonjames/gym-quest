@@ -610,6 +610,40 @@ export const userRouter = createTRPCRouter({
           removedUserId: otherUserId
         }
       })
-    })
+    }),
+
+  revokeFriendRequest: protectedProcedure
+    .input(z.object({
+      friendRequestId: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const myUserId = ctx.session.user.id
+
+      if (!myUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Missing data in the request."
+        })
+      }
+
+      const { friendRequestId } = input
+
+      const activeFriendRequest = await ctx.db.query.friendRequest.findFirst({
+        where: and(
+          eq(friendRequest.toUserId, myUserId),
+          eq(friendRequest.accepted, false),
+          eq(friendRequest.id, friendRequestId)
+        )
+      })
+
+      if (!activeFriendRequest) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You have no pending friend request from this user."
+        })
+      }
+
+      await ctx.db.delete(friendRequest).where(eq(friendRequest.id, activeFriendRequest.id))
+    }),
 });
 

@@ -11,7 +11,6 @@ export default function Navbar () {
 
   const incomingRequests = friendsRequests?.incoming.length ?? 0
   const outGoingRequests = friendsRequests?.outgoing.length ?? 0
-  const totalRequests = incomingRequests + outGoingRequests
 
   const pathName = usePathname()
 
@@ -28,16 +27,30 @@ export default function Navbar () {
           Friends
         </Link>
         <Link 
-          href="/user/friends/requests"
+          href="/user/friends/incoming-requests"
           className={cn(
             "border-b-2 text-sm p-1",
-            "/user/friends/requests" === pathName ? "" : "border-b-transparent text-muted-foreground"
+            "/user/friends/incoming-requests" === pathName ? "" : "border-b-transparent text-muted-foreground"
           )}
         >
-          Requests
-          {totalRequests > 0 && (
+          Incoming Requests
+          {incomingRequests > 0 && (
             <span className="ms-2 px-1 py-0.5 bg-primary/80 rounded-sm font-semibold">
-              {totalRequests > 9 ? "+9" : totalRequests}
+              {incomingRequests > 9 ? "+9" : incomingRequests}
+            </span>
+          )}
+        </Link>
+        <Link 
+          href="/user/friends/outgoing-requests"
+          className={cn(
+            "border-b-2 text-sm p-1",
+            "/user/friends/outgoing-requests" === pathName ? "" : "border-b-transparent text-muted-foreground"
+          )}
+        >
+          Outgoing Requests
+          {outGoingRequests > 0 && (
+            <span className="ms-2 px-1 py-0.5 bg-primary/80 rounded-sm font-semibold">
+              {outGoingRequests > 9 ? "+9" : outGoingRequests}
             </span>
           )}
         </Link>
