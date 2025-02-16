@@ -23,7 +23,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
           <Navbar />
           <DynamicLayout>
             <div className="md:pt-6 pt-4 min-h-full h-full">
-              <div className="min-h-full h-full flex flex-col max-w-6xl mx-auto px-4">
+              <div className="min-h-full h-full flex flex-col max-w-6xl mx-auto px-4 md:px-10">
                 {children}
               </div>
             </div>

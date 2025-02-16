@@ -23,7 +23,7 @@ export function NavGeneral({
       <SidebarMenu>
         {generalItem.map((item) => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild isActive={isActive(item.url)}>
+            <SidebarMenuButton asChild isActive={isActive(item.url)} disabled={item.disabled}>
               <Link href={item.url}>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>

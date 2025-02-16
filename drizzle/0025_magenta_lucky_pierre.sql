@@ -1,0 +1,1 @@
+ALTER TABLE "friendShip" ADD CONSTRAINT "friendShip_userOne_userTwo_pk" PRIMARY KEY("userOne","userTwo");

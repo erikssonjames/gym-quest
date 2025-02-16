@@ -19,7 +19,9 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: z.string(),
     AUTH_EMAIL_SECRET: z.string(),
     HOST_URL: z.string(),
-    RESEND_API_KEY: z.string()
+    RESEND_API_KEY: z.string(),
+    SERVER_SOCKET_KEY: z.string(),
+    SOCKET_SERVER_URL: z.string()
   },
 
   /**
@@ -29,6 +31,7 @@ export const env = createEnv({
    */
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_SOCKET_SERVER_URL: z.string()
   },
 
   /**
@@ -43,7 +46,10 @@ export const env = createEnv({
     AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
     AUTH_EMAIL_SECRET: process.env.AUTH_EMAIL_SECRET,
     HOST_URL: process.env.HOST_URL,
-    RESEND_API_KEY: process.env.RESEND_API_KEY
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    SERVER_SOCKET_KEY: process.env.SERVER_SOCKET_KEY,
+    SOCKET_SERVER_URL: process.env.SOCKET_SERVER_URL,
+    NEXT_PUBLIC_SOCKET_SERVER_URL: process.env.NEXT_PUBLIC_SOCKET_SERVER_URL
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

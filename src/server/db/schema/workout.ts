@@ -54,6 +54,7 @@ export const workoutToUser = pgTable(
 export const ratingEnum = pgEnum("rating", ["1", "2", "3", "4", "5"])
 
 export const workoutReview = pgTable("workoutReview", {
+  id: uuid("id").defaultRandom().primaryKey(),
   createdAt: date("createdAt").notNull(),
   editedAt: date("editedAt"),
   userId: uuid("userId")

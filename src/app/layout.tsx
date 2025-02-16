@@ -9,6 +9,7 @@ import { inter } from "@/styles/fonts";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { env } from "@/env";
 
 export const metadata: Metadata = {
   title: "Gym Quest",
@@ -61,8 +62,12 @@ export default async function RootLayout({
             </NextIntlClientProvider>
           </ThemeProvider>
         </TRPCReactProvider>
-        <Analytics />
-        <SpeedInsights />
+        {env.NODE_ENV === "production" && (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        )}
       </body>
     </html>
   );

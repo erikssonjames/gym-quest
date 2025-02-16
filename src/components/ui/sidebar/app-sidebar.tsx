@@ -30,6 +30,7 @@ export type SidebarItem = {
   url: string;
   icon?: LucideIcon;
   items?: SidebarItem[]; // ✅ Recursively allows sub-items
+  disabled?: boolean
 };
 
 export type SidebarData = {
@@ -59,6 +60,7 @@ export const sidebarData: SidebarData = {
         { title: "Levels", url: "/user/achievements/levels" },
         { title: "Trophies", url: "/user/achievements/trophies" },
       ],
+      disabled: true
     },
     {
       title: "Documentation",
@@ -70,6 +72,7 @@ export const sidebarData: SidebarData = {
         { title: "Tutorials", url: "/user/documentation/tutorials" },
         { title: "Changelog", url: "/user/documentation/change-log" },
       ],
+      disabled: true
     },
   ],
   navGeneral: [

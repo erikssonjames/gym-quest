@@ -47,6 +47,7 @@ export function NavMain({
             asChild
             defaultOpen={isPartiallyActive(item.url)}
             className="group/collapsible"
+            disabled={item.disabled}
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>

@@ -28,6 +28,7 @@ const getQueryClient = () => {
 };
 
 export const api = createTRPCReact<AppRouter>();
+export type ClientApi = typeof api
 
 /**
  * Inference helper for inputs.

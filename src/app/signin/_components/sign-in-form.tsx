@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { type PROVIDER } from "@/variables/auth";
 import { toast } from "sonner";
-import { Loader2Icon } from "lucide-react";
+import { Eye, EyeOff, Loader2Icon } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -28,6 +28,7 @@ const formSchema = z.object({
 
 export default function SignInForm({ providers }: { providers: { id: PROVIDER, name: string }[] }) {
   const [isPending, setIsPending] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const router = useRouter()
   const form = useForm<z.infer<typeof formSchema>>({
@@ -119,12 +120,23 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Passsword</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='*********' {...field}
-                    type='password'
-                  />
-                </FormControl>
+                <div className="relative">
+                  <FormControl>
+                    <Input 
+                      placeholder='*********'
+                      {...field}
+                      type={showPassword ? 'text' : 'password'}
+                      className="pe-10"
+                    />
+                  </FormControl>
+                  {field.value.length > 0 && (
+                    <div className="absolute top-0 right-0 h-full flex items-center p-2">
+                      <button onClick={() => setShowPassword(!showPassword)} type="button" className="text-muted-foreground rounded-sm p-1 hover:bg-accent">
+                        {!showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -133,7 +145,7 @@ export default function SignInForm({ providers }: { providers: { id: PROVIDER, n
             {isPending ? (
               <Loader2Icon className="size-6 animate-spin" />
             ) : (
-              <>Sign Up</>
+              <>Sign In</>
             )}
           </Button>
         </form>

@@ -5,8 +5,19 @@ import {
   publicProcedure,
   protectedProcedure
 } from "@/server/api/trpc";
-import { type NewUser, type NewAccount, users, accounts, userSettings, type NewUserSettings, verificationQueue, waitlists } from "@/server/db/schema/user";
-import { eq, inArray } from "drizzle-orm";
+import { 
+  type NewUser, 
+  type NewAccount, 
+  users, 
+  accounts, 
+  userSettings, 
+  type NewUserSettings, 
+  verificationQueue, 
+  waitlists, 
+  friendShip, 
+  friendRequest 
+} from "@/server/db/schema/user";
+import { and, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "@/lib/hash";
 import { BORDER_RADIUS_ARRAY, COLOR_THEMES_ARRAY } from "@/variables/settings";
@@ -17,8 +28,11 @@ import sendVerifyEmail from "@/lib/emailUtils";
 import crypto from "crypto"
 import { emailLimiter } from "@/server/limiters";
 import { isBefore, subHours } from "date-fns";
+import { createAddedFriendRequestNotification, createNewFriendRequestNotification } from "@/server/utils/send-notification";
+import { emitSocketEvent } from "@/server/global-socket-client";
+import { UserEvents } from "@/socket/enums/user";
 
-type UserDetails = {email: string, password: string }
+type UserDetails = { email: string, password: string }
 
 const createUserAccount = async ({
   email,
@@ -48,7 +62,6 @@ const createUserAccount = async ({
 
       const createdUserId = createdUser[0]?.id;
       if (!createdUserId) {
-        console.log("createUserAccount.ERROR - User creation failed");
         return new TRPCError({
           code: "BAD_REQUEST",
           message: "Something went wrong creating your user account."
@@ -151,6 +164,25 @@ export const userRouter = createTRPCRouter({
       })
 
       return user
+    }),
+
+  getUsers: protectedProcedure
+    .query(async ({ ctx }) => {
+      const myUserId = ctx.session.user.id
+
+      if (!myUserId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Incorrect session.'
+        })
+      }
+
+      return await ctx.db.query.users.findMany({
+        where: and(
+          ne(users.id, myUserId),
+          isNotNull(users.username)
+        ),
+      })
     }),
 
   updateUserSettings: protectedProcedure
@@ -347,5 +379,237 @@ export const userRouter = createTRPCRouter({
 
       return { available: foundUsers.length === 0, username: input }
     }),
+
+  getFriends: protectedProcedure
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id
+
+      if (!userId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Incorrect session.'
+        })
+      }
+
+      const friendShips = await ctx.db.query.friendShip.findMany({
+        where: or(
+          eq(friendShip.userOne, userId),
+          eq(friendShip.userTwo, userId),
+        ),
+        with: {
+          userOneUser: true,
+          userTwoUser: true
+        }
+      })
+
+      return friendShips.map(friendShip => {
+        const friend = friendShip.userOneUser.id === userId
+          ? friendShip.userTwoUser
+          : friendShip.userOneUser
+
+        return {
+          createdAt: friendShip.createdAt,
+          ...friend
+        }
+      })
+    }),
+
+  getFriendRequests: protectedProcedure
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id
+
+      if (!userId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Incorrect session.'
+        })
+      }
+
+      const friendRequests = await ctx.db.query.friendRequest.findMany({
+        where: and(
+          or(
+            eq(friendRequest.fromUserId, userId),
+            eq(friendRequest.toUserId, userId)
+          ),
+          eq(friendRequest.accepted, false),
+          eq(friendRequest.ignored, false)
+        ),
+        with: {
+          fromUser: true,
+          toUser: true
+        }
+      })
+
+      return friendRequests.reduce<
+        { incoming: Array<typeof friendRequests[number]>, outgoing: Array<typeof friendRequests[number]> }
+      >((acc, curr) => {
+        if (curr.fromUserId === userId) {
+          acc.outgoing.push(curr)
+        } else {
+          acc.incoming.push(curr)
+        }
+        return acc
+      }, { incoming: [], outgoing: [] })
+    }),
+
+  sendFriendRequest: protectedProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const myUserId = ctx.session.user.id
+      const toUserId = input
+
+      if (!myUserId || !toUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Missing data in the request."
+        })
+      }
+
+      const existingPendingRequest = await ctx.db.query.friendRequest.findFirst({
+        where: and(
+          or(
+            inArray(friendRequest.toUserId, [myUserId, toUserId]),
+            inArray(friendRequest.fromUserId, [myUserId, toUserId])
+          ),
+          ne(friendRequest.accepted, true),
+          ne(friendRequest.ignored, true)
+        )
+      })
+
+      if (existingPendingRequest) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You already have a pending friend request with this user."
+        })
+      }
+
+      const createdFriendRequest = (await ctx.db.insert(friendRequest).values({
+        fromUserId: myUserId,
+        toUserId: toUserId
+      }).returning()).at(0)
+
+      if (createdFriendRequest) {
+        await createNewFriendRequestNotification(ctx, createdFriendRequest)
+      }
+    }),
+
+  acceptFriendRequest: protectedProcedure
+    .input(z.object({
+      friendRequestId: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const myUserId = ctx.session.user.id
+
+      if (!myUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Missing data in the request."
+        })
+      }
+
+      const { friendRequestId } = input
+
+      const activeFriendRequest = await ctx.db.query.friendRequest.findFirst({
+        where: and(
+          eq(friendRequest.toUserId, myUserId),
+          eq(friendRequest.accepted, false),
+          eq(friendRequest.id, friendRequestId)
+        )
+      })
+
+      if (!activeFriendRequest) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You have no pending friend request from this user."
+        })
+      }
+
+      await ctx.db.insert(friendShip).values({
+        userOne: activeFriendRequest.toUserId,
+        userTwo: activeFriendRequest.fromUserId
+      })
+
+      const updatedFriendRequest = (await ctx.db.update(friendRequest).set({
+        accepted: true
+      }).where(eq(friendRequest.id, activeFriendRequest.id)).returning()).at(0)
+
+      if (updatedFriendRequest) {
+        await createAddedFriendRequestNotification(ctx, updatedFriendRequest)
+      }
+    }),
+
+  ignoreFriendRequest: protectedProcedure
+    .input(z.object({
+      friendRequestId: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const myUserId = ctx.session.user.id
+
+      if (!myUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Missing data in the request."
+        })
+      }
+
+      const { friendRequestId } = input
+
+      const activeFriendRequest = await ctx.db.query.friendRequest.findFirst({
+        where: and(
+          eq(friendRequest.toUserId, myUserId),
+          eq(friendRequest.ignored, false),
+          eq(friendRequest.accepted, false),
+          eq(friendRequest.id, friendRequestId)
+        )
+      })
+
+      if (!activeFriendRequest) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You have no pending friend request from this user."
+        })
+      }
+
+      await ctx.db.update(friendRequest).set({
+        ignored: true
+      }).where(eq(friendRequest.id, activeFriendRequest.id))
+    }),
+
+  removeFriend: protectedProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const myUserId = ctx.session.user.id
+      const otherUserId = input
+
+      if (!myUserId || !otherUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Missing data in the request."
+        })
+      }
+
+      await ctx.db.delete(friendShip).where(
+        or(
+          and(
+            eq(friendShip.userOne, myUserId),
+            eq(friendShip.userTwo, otherUserId)
+          ),
+          and(
+            eq(friendShip.userOne, otherUserId),
+            eq(friendShip.userTwo, myUserId)
+          ),
+        )
+      )
+
+      emitSocketEvent<UserEvents.REMOVED_USER_AS_FRIEND>({
+        type: UserEvents.REMOVED_USER_AS_FRIEND,
+        recipients: otherUserId,
+        payload: {
+          sentAt: new Date(),
+          userId: myUserId,
+          removedUserId: otherUserId
+        }
+      })
+    })
 });
 

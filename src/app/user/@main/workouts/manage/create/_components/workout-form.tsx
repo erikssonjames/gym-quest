@@ -47,14 +47,18 @@ export default function CreateWorkoutForm() {
 
   const searchParamsFunctions = useSearchParamsFn()
 
-  const { mutateAsync, isPending, isSuccess } = api.workout.createWorkout.useMutation({
+  const { mutate, isPending, isSuccess } = api.workout.createWorkout.useMutation({
     onSuccess: () => {
       // Handle success
       saveStoredForm(null)
       void utils.workout.invalidate()
       toast.success("Workout succesfully created!")
-      searchParamsFunctions.get(SearchParam.RETURN_URL)?.()
-      router.replace("/user/workouts/manage")
+      const returnFn = searchParamsFunctions.get(SearchParam.RETURN_URL)
+      if (returnFn) {
+        returnFn()
+      } else {
+        router.replace("/user/workouts/manage")
+      }
     },
     onError: (error) => {
       console.error("Error creating workout:", error);
@@ -102,9 +106,8 @@ export default function CreateWorkoutForm() {
     name: "workoutSets"
   })
 
-
-  const onSubmitWorkout = async (values: CreateWorkoutInput) => {
-    await mutateAsync(values);
+  const onSubmitWorkout = (values: CreateWorkoutInput) => {
+    mutate(values);
   };
 
   const onAddSetCollection = (exerciseId: string) => {

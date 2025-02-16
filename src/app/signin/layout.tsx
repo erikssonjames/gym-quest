@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import ErrorIndicator from "./_components/error-indicator";
 
 export default async function Layout({
   children,
@@ -9,5 +10,10 @@ export default async function Layout({
   const session = await auth()
   if (session?.user) redirect('/user')
 
-  return children
+  return (
+    <>
+      {children}
+      <ErrorIndicator />
+    </>
+  )
 }

@@ -113,8 +113,6 @@ export default function WorkoutController () {
       return
     }
 
-    console.log("Test")
-
     const shouldStartFragmentForThisCollection = getSessionLogWithFewestFragments(session, activeSet)
     createFragment({
       fragment: {

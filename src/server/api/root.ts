@@ -2,6 +2,7 @@ import { userRouter } from "@/server/api/routers/user"
 import { bodyRouter } from "@/server/api/routers/body"
 import { exerciseRouter } from "@/server/api/routers/exercise"
 import { workoutRouter } from "@/server/api/routers/workout"
+import { notificationsRouter } from "@/server/api/routers/notifications"
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { type inferRouterOutputs } from "@trpc/server";
 
@@ -15,6 +16,7 @@ export const appRouter = createTRPCRouter({
   body: bodyRouter,
   exercise: exerciseRouter,
   workout: workoutRouter,
+  notification: notificationsRouter,
 });
 
 // export type definition of API

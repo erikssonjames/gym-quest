@@ -12,9 +12,12 @@ import {
   timestamp,
   varchar,
   pgTable,
-  uuid
+  uuid,
+  boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
+import { sql } from 'drizzle-orm';
 
 type ExtraAdapterAccountType = AdapterAccountType | 'credentials'
 
@@ -125,7 +128,43 @@ export const waitlists = pgTable("waitlist", {
   }).defaultNow().notNull()
 })
 
+export const friendRequest = pgTable("friendRequest", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  fromUserId: uuid("fromUserId")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  toUserId: uuid("toUserId")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  accepted: boolean("accepted").default(false),
+  ignored: boolean("ignored").default(false)
+})
+
+
+export const friendShip = pgTable(
+  "friendShip",
+  {
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    userOne: uuid("userOne")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    userTwo: uuid("userTwo")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull()
+  },
+  (t) => [{
+    uniqueFriendship: uniqueIndex("unique_friendship").on(
+      sql`LEAST(${t.userOne}, ${t.userTwo})`,
+      sql`GREATEST(${t.userOne}, ${t.userTwo})`
+    )
+  }, primaryKey({ columns: [t.userOne, t.userTwo] })]
+);
+
 export type NewUserSettings = typeof userSettings.$inferInsert
 
 export type NewUser = typeof users.$inferInsert
+export type User = typeof users.$inferSelect
+
 export type NewAccount = typeof accounts.$inferInsert
+
+export type FriendRequest = typeof friendRequest.$inferSelect

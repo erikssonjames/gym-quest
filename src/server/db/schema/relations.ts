@@ -1,8 +1,9 @@
 import { relations } from "drizzle-orm"
 import { muscle, muscleGroup } from "./body"
 import { exercise, exercisePublicRequest, exerciseToMuscle } from "./exercise"
-import { accounts, sessions, users, userSettings } from "./user"
+import { accounts, friendRequest, friendShip, sessions, users, userSettings } from "./user"
 import { workout, workoutReview, workoutSession, workoutSessionLog, workoutSessionLogFragment, workoutSet, workoutSetCollection, workoutToUser } from "./workout"
+import { friendRequestNotification, notification, workoutReviewNotification } from "./notifications"
 
 // User
 
@@ -11,7 +12,9 @@ export const userRelations = relations(users, ({ many, one }) => ({
   sessions: many(workoutSession),
   reviews: many(workoutReview),
   accounts: many(accounts),
-  userSettings: one(userSettings)
+  userSettings: one(userSettings),
+  friendsShip: many(friendShip),
+  friendRequests: many(friendRequest)
 }))
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -24,6 +27,28 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 
 export const userSettingsRelations = relations(userSettings, ({ one }) => ({
   user: one(users, { fields: [userSettings.userId], references: [users.id] })
+}))
+
+export const friendShipRelations = relations(friendShip, ({ one }) => ({
+  userOneUser: one(users, {
+    fields: [friendShip.userOne],
+    references: [users.id],
+  }),
+  userTwoUser: one(users, {
+    fields: [friendShip.userTwo],
+    references: [users.id],
+  }),
+}));
+
+export const friendRequestRelation = relations(friendRequest, ({ one }) => ({
+  fromUser: one(users, {
+    fields: [friendRequest.fromUserId],
+    references: [users.id],
+  }),
+  toUser: one(users, {
+    fields: [friendRequest.toUserId],
+    references: [users.id],
+  }),
 }))
 
 // Exercise
@@ -110,7 +135,8 @@ export const workoutReviewRelations = relations(workoutReview, ({ one }) => ({
   user: one(users, {
     fields: [workoutReview.userId],
     references: [users.id]
-  })
+  }),
+  workoutReviewNotifications: one(workoutReviewNotification)
 }));
 
 export const workoutSessionRelations = relations(workoutSession, ({ one, many }) => ({
@@ -154,5 +180,34 @@ export const workoutToUserRelations = relations(workoutToUser, ({ one }) => ({
   user: one(users, {
     fields: [workoutToUser.userId],
     references: [users.id]
+  })
+}))
+
+// Notifications
+
+export const notificationRelations = relations(notification, ({ one }) => ({
+  friendRequest: one(friendRequestNotification),
+  workoutReview: one(workoutReviewNotification)
+}))
+
+export const friendRequestNotificationRelations = relations(friendRequestNotification, ({ one }) => ({
+  notification: one(notification, {
+    fields: [friendRequestNotification.notificationId],
+    references: [notification.id]
+  }),
+  friendRequest: one(friendRequest, {
+    fields: [friendRequestNotification.friendRequestId],
+    references: [friendRequest.id]
+  })
+}))
+
+export const workoutReviewNotificationRelations = relations(workoutReviewNotification, ({ one }) => ({
+  notification: one(notification, {
+    fields: [workoutReviewNotification.notificationId],
+    references: [notification.id]
+  }),
+  workoutReview: one(workoutReview, {
+    fields: [workoutReviewNotification.workoutReviewId],
+    references: [workoutReview.id]
   })
 }))
