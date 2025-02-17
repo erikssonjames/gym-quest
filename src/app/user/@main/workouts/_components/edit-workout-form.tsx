@@ -106,8 +106,8 @@ export default function EditWorkoutForm({ workout, close }: { workout: WorkoutIn
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmitWorkout)} className="gap-6 flex flex-col min-h-0 flex-grow">
-        <div className="flex gap-6 items-center px-8">
+      <form onSubmit={form.handleSubmit(onSubmitWorkout)} className="md:gap-6 gap-3 flex flex-col min-h-0 flex-grow">
+        <div className="flex gap-6 items-center md:px-8">
           <FormField
             control={form.control}
             name="name"
@@ -147,7 +147,7 @@ export default function EditWorkoutForm({ workout, close }: { workout: WorkoutIn
           control={form.control}
           name="description"
           render={({ field }) => (
-            <FormItem className="px-8">
+            <FormItem className="md:px-8">
               <FormControl>
                 <Textarea placeholder="Description" {...field} />
               </FormControl>
@@ -156,6 +156,13 @@ export default function EditWorkoutForm({ workout, close }: { workout: WorkoutIn
           )}
         />
 
+        <div 
+          className="w-full md:px-8 flex-shrink-0" 
+          style={{ minHeight: 'inherit' }}
+        >
+          <SelectExercise onSelectExercise={onAddSetCollection} />
+        </div>
+
         <div className="space-y-2 min-h-0 flex flex-col">
           <DndContext
             sensors={sensors}
@@ -163,7 +170,7 @@ export default function EditWorkoutForm({ workout, close }: { workout: WorkoutIn
             onDragEnd={onSwapSetCollection}
           >
             <SortableContext items={fields.map(f => f.id)}>
-              <ScrollContainerFadingEdges className="px-8 min-h-0 flex-grow py-1">
+              <ScrollContainerFadingEdges className="ps-8 md:pe-8 min-h-0 flex-grow py-1">
                 {fields.map((field, setIndex) => (
                   <CreateSetForm
                     key={field.id} 
@@ -178,14 +185,7 @@ export default function EditWorkoutForm({ workout, close }: { workout: WorkoutIn
           </DndContext>
         </div>
 
-        <div 
-          className="w-full px-8" 
-          style={{ minHeight: 'inherit' }}
-        >
-          <SelectExercise onSelectExercise={onAddSetCollection} />
-        </div>
-
-        <div className="mt-auto flex-none px-8">
+        <div className="mt-auto flex-none md:px-8">
           <Button type="submit" className="w-full">
             {isPending ? <Loader2Icon className="size-6 animate-spin" /> : <>Edit Workout</>}
           </Button>

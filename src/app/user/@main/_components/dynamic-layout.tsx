@@ -12,7 +12,7 @@ export default function DynamicLayout({ children, className }: { children: React
   const { open } = useSidebar()
 
   return (
-    <div className="absolute inset-0" ref={outerRef}>
+    <div className="absolute left-0 right-0 h-dvh top-0" ref={outerRef}>
       <ContainerRefProvider ref={outerRef}>
         <div 
           className={cn(

@@ -75,7 +75,7 @@ function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSe
       ref={setNodeRef}
       className="flex"
     >
-      <div className="relative flex-grow rounded-md">
+      <div className="relative flex-grow rounded-md pe-1 md:pe-0">
         <button 
           className="absolute right-full top-0 bg-secondary/30 border p-2 rounded-l-sm flex items-center gap-2 cursor-grab hover:bg-secondary/60 active:bg-primary/40"
           type="button"
@@ -149,7 +149,7 @@ function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSe
           </div>
         )}
       </div>
-      <div className="bg-background/20 flex flex-col gap-2 h-fit p-2 ms-2 rounded-md">
+      <div className="bg-background/20 flex-col gap-2 h-fit p-2 ms-2 rounded-md hidden md:flex">
         <Button size="icon" className="size-7" onClick={() => onReset()} type="button">
           <RotateCcw />
         </Button>

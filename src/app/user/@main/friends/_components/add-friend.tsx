@@ -44,7 +44,7 @@ export function AddFriend () {
     <Dialog>
       <DialogTrigger asChild>
         <Button size="sm" className="h-8">
-          <Plus /> Add Friend
+          <Plus /> <span className="hidden md:inline">Add Friend</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
@@ -89,19 +89,21 @@ function SendFriendRequestButton ({ userId }: { userId: string }) {
       toast.success("Friend request sent!")
       void utils.user.getFriendRequests.invalidate()
     },
-    onError: () => {
+    onError: (error) => {
+      console.log('error', error)
       toast.error("Could not send a friend request...")
     }
   })
+  const { mutate: testSocketServer } = api.user.testSocketServer.useMutation()
 
   return (
     <Button
-      className="group-hover:opacity-100 opacity-0 h-7" 
+      className="h-7" 
       size="sm" 
-      onClick={() => mutate(userId)}
+      onClick={() => testSocketServer()}
       disabled={sendFriendRequestPending}
     >
-      Add Friend
+      <span className="hidden md:inline">Add Friend</span>
       {sendFriendRequestPending ? <Loader2 className="animate-spin" /> : <Plus />}
     </Button>
   )

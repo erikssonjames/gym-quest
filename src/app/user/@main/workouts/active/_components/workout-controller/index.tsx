@@ -153,8 +153,6 @@ export default function WorkoutController () {
 
   if (!session || !ref.current || !currentPage) return null
 
-  
-
   return (
     <>
       {createPortal(
@@ -175,7 +173,7 @@ export default function WorkoutController () {
       )}
 
       <div className="pt-6 pb-10">
-        <div className={currentPage.h} />
+        <div className={!collapsed ? currentPage.h : "h-10"} />
       </div>
     </>
   )

@@ -33,7 +33,7 @@ export default function Navbar () {
             "/user/friends/incoming-requests" === pathName ? "" : "border-b-transparent text-muted-foreground"
           )}
         >
-          Incoming Requests
+          Incoming <span className="hidden md:inline">Requests</span>
           {incomingRequests > 0 && (
             <span className="ms-2 px-1 py-0.5 bg-primary/80 rounded-sm font-semibold">
               {incomingRequests > 9 ? "+9" : incomingRequests}
@@ -47,7 +47,7 @@ export default function Navbar () {
             "/user/friends/outgoing-requests" === pathName ? "" : "border-b-transparent text-muted-foreground"
           )}
         >
-          Outgoing Requests
+          Outgoing <span className="hidden md:inline">Requests</span>
           {outGoingRequests > 0 && (
             <span className="ms-2 px-1 py-0.5 bg-primary/80 rounded-sm font-semibold">
               {outGoingRequests > 9 ? "+9" : outGoingRequests}

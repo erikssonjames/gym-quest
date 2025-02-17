@@ -1,6 +1,5 @@
 "use client";
 
-import { env } from "@/env";
 import type { SocketEventPayloads } from "@/socket/types";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
@@ -24,7 +23,7 @@ export default function SocketEventListener() {
 
     // Only create the socket if it hasn't been created yet
     if (!socketRef.current) {
-      socketRef.current = io(env.NEXT_PUBLIC_SOCKET_SERVER_URL, {
+      socketRef.current = io({
         auth: { userId: myUserId },
       });
     }

@@ -32,7 +32,7 @@ interface DisplayWorkoutsProps {
 
 export default function DisplayWorkouts ({ workouts, loading }: DisplayWorkoutsProps) {
   return (
-    <div className="my-10 grid grid-cols-1 content-start gap-2 w-full flex-grow">
+    <div className="py-4 md:py-10 grid grid-cols-1 content-start gap-2 w-full flex-grow">
       {loading && (
         <>
           <Skeleton className="w-full h-60" />
@@ -222,7 +222,7 @@ function EditWorkout ({ workout, children }: { workout: WorkoutOutput, children:
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-7xl mx-0 md:mx-10 max-h-screen h-[calc(100vh-4rem)] flex flex-col px-20 py-10">
+      <DialogContent className="sm:max-w-7xl mx-0 md:mx-10 max-h-screen md:h-[calc(100vh-4rem)] flex flex-col md:px-20 md:py-10">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit workout</DialogTitle>
           <DialogDescription></DialogDescription>

@@ -29,8 +29,9 @@ import crypto from "crypto"
 import { emailLimiter } from "@/server/limiters";
 import { isBefore, subHours } from "date-fns";
 import { createAddedFriendRequestNotification, createNewFriendRequestNotification } from "@/server/utils/send-notification";
-import { emitSocketEvent } from "@/server/global-socket-client";
 import { UserEvents } from "@/socket/enums/user";
+import { emitServerSocketEvent } from "@/server/socket";
+import { UserNotifications } from "@/socket/enums/notifications";
 
 type UserDetails = { email: string, password: string }
 
@@ -458,12 +459,17 @@ export const userRouter = createTRPCRouter({
       const myUserId = ctx.session.user.id
       const toUserId = input
 
+      let num = 0
+      console.log(++num)
+
       if (!myUserId || !toUserId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Missing data in the request."
         })
       }
+
+      console.log(++num)
 
       const existingPendingRequest = await ctx.db.query.friendRequest.findFirst({
         where: and(
@@ -476,6 +482,8 @@ export const userRouter = createTRPCRouter({
         )
       })
 
+      console.log(++num)
+
       if (existingPendingRequest) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -483,14 +491,24 @@ export const userRouter = createTRPCRouter({
         })
       }
 
+      console.log(++num)
+
       const createdFriendRequest = (await ctx.db.insert(friendRequest).values({
         fromUserId: myUserId,
         toUserId: toUserId
       }).returning()).at(0)
 
-      if (createdFriendRequest) {
-        await createNewFriendRequestNotification(ctx, createdFriendRequest)
+      console.log(++num)
+
+      try {
+        if (createdFriendRequest) {
+          await createNewFriendRequestNotification(ctx, createdFriendRequest)
+        }
+      } catch (e) {
+        console.log(e)
       }
+
+      console.log(++num)
     }),
 
   acceptFriendRequest: protectedProcedure
@@ -601,8 +619,8 @@ export const userRouter = createTRPCRouter({
         )
       )
 
-      emitSocketEvent<UserEvents.REMOVED_USER_AS_FRIEND>({
-        type: UserEvents.REMOVED_USER_AS_FRIEND,
+      emitServerSocketEvent<UserEvents.REMOVED_USER_AS_FRIEND>({
+        event: UserEvents.REMOVED_USER_AS_FRIEND,
         recipients: otherUserId,
         payload: {
           sentAt: new Date(),
@@ -630,7 +648,7 @@ export const userRouter = createTRPCRouter({
 
       const activeFriendRequest = await ctx.db.query.friendRequest.findFirst({
         where: and(
-          eq(friendRequest.toUserId, myUserId),
+          eq(friendRequest.fromUserId, myUserId),
           eq(friendRequest.accepted, false),
           eq(friendRequest.id, friendRequestId)
         )
@@ -645,5 +663,23 @@ export const userRouter = createTRPCRouter({
 
       await ctx.db.delete(friendRequest).where(eq(friendRequest.id, activeFriendRequest.id))
     }),
+
+  testSocketServer: protectedProcedure
+    .mutation(async () => {
+      emitServerSocketEvent({
+        event: UserNotifications.ACCEPTED_FRIEND_REQUEST,
+        payload: {
+          friendRequest: {
+            accepted: true,
+            fromUserId: "",
+            id: "",
+            ignored: false,
+            toUserId: ""
+          },
+          sentAt: new Date(),
+          userId: ""
+        }
+      })
+    })
 });
 

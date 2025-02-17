@@ -42,6 +42,7 @@ function FriendRequestControls ({ friendRequestId }: { friendRequestId: string }
     onSuccess: () => {
       void utils.user.getFriends.invalidate()
       void utils.user.getUsers.invalidate()
+      void utils.user.getFriendRequests.invalidate()
     }
   })
 

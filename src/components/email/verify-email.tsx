@@ -17,9 +17,7 @@ interface SlackConfirmEmailProps {
   code: string;
 }
 
-const baseUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : '';
+const baseUrl = "https://gymquest.net"
 
 export const SignUpConfirmEmail = ({ code }: SlackConfirmEmailProps) => (
   <Html>

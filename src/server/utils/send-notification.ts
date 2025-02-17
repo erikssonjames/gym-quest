@@ -2,7 +2,7 @@ import type { TRPCContext } from "@/trpc/server";
 import { friendRequestNotification, notification } from "../db/schema/notifications";
 import { UserNotifications } from "@/socket/enums/notifications";
 import type { FriendRequest } from "../db/schema/user";
-import { emitSocketEvent } from "../global-socket-client";
+import { emitServerSocketEvent } from "../socket";
 
 export async function createNewFriendRequestNotification (ctx: TRPCContext, friendRequest: FriendRequest) {
   const { toUserId, id: friendRequestId, fromUserId } = friendRequest
@@ -16,13 +16,13 @@ export async function createNewFriendRequestNotification (ctx: TRPCContext, frie
     })
   }
 
-  emitSocketEvent<UserNotifications.OUTGOING_FRIEND_REQUEST>({
+  emitServerSocketEvent<UserNotifications.OUTGOING_FRIEND_REQUEST>({
     payload: {
       friendRequest,
       sentAt: new Date(),
       userId: fromUserId
     },
-    type: UserNotifications.OUTGOING_FRIEND_REQUEST,
+    event: UserNotifications.OUTGOING_FRIEND_REQUEST,
     recipients: toUserId
   })
 }
@@ -43,13 +43,13 @@ export async function createAddedFriendRequestNotification (ctx: TRPCContext, fr
     })
   }
 
-  emitSocketEvent<UserNotifications.ACCEPTED_FRIEND_REQUEST>({
+  emitServerSocketEvent<UserNotifications.ACCEPTED_FRIEND_REQUEST>({
     payload: {
       friendRequest,
       sentAt: new Date(),
       userId: toUserId
     },
-    type: UserNotifications.ACCEPTED_FRIEND_REQUEST,
+    event: UserNotifications.ACCEPTED_FRIEND_REQUEST,
     recipients: userToBeNotificated
   })
 }

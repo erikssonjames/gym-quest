@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "lint": "next lint",
     "start": "next start"
   },
@@ -50,6 +50,7 @@
     "drizzle-kit": "^0.30.2",
     "drizzle-orm": "^0.38.4",
     "drizzle-zod": "^0.6.1",
+    "express": "^4.21.2",
     "framer-motion": "^11.2.12",
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.2",
@@ -60,6 +61,7 @@
     "next-auth": "^5.0.0-beta.18",
     "next-intl": "^3.15.2",
     "next-themes": "^0.3.0",
+    "nodemon": "^3.1.9",
     "postgres": "^3.4.4",
     "rate-limiter-flexible": "^5.0.5",
     "react": "^18.3.0",
@@ -67,11 +69,13 @@
     "react-hook-form": "^7.52.0",
     "resend": "^3.4.0",
     "server-only": "^0.0.1",
+    "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.2",
     "superjson": "^2.2.1",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
+    "ts-node": "^10.9.2",
     "usehooks-ts": "^3.1.0",
     "vaul": "^1.1.2",
     "zod": "^3.23.8"
@@ -93,6 +97,7 @@
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "tailwindcss": "^3.4.3",
+    "tsx": "^4.19.2",
     "typescript": "^5.4.2"
   },
   "ct3aMetadata": {

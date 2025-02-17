@@ -13,7 +13,7 @@ export default function ManagePage () {
   return (
     <>
       <div className="flex justify-between items-center">
-        <H3 text="Your workouts" />
+        <H3 text="Your workouts" className="hidden md:block" />
 
         <div className="flex gap-2">
           <Button size="sm" className="h-8" asChild>
