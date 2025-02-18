@@ -14,10 +14,10 @@ export function emitServerSocketEvent<T extends keyof SocketEventPayloads>(serve
         socketServer?.to(userId)
       })
       for (const userId of recipients) {
-        socketServer.to(userId).emit(event, payload)
+        socketServer.to(userId).emit(event as string, payload)
       }
     } else {
-      socketServer.to(recipients).emit(event, payload)
+      socketServer.to(recipients).emit(event as string, payload)
     }
   } else {
     socketServer.emit(event, payload);

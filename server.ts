@@ -11,9 +11,8 @@ const handler = app.getRequestHandler();
 
 interface ServerToClientEvents {
   noArg: () => void;
-  basicEmit: (a: number, b: string, c: Buffer) => void;
-  withAck: (d: string, callback: (e: number) => void) => void;
-}
+  [event: string]: (...args: unknown[]) => void;
+  }
 
 interface ClientToServerEvents {
   hello: () => void;
