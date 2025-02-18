@@ -45,7 +45,7 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning suppressContentEditableWarning>
       <body
         className={cn(
-          'flex flex-col w-full min-h-screen bg-background font-sans antialiased standard medium_radius',
+          'flex flex-col w-full min-h-dvh bg-background font-sans antialiased standard medium_radius',
           inter.variable
         )}
       >

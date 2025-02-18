@@ -6,7 +6,7 @@ import { Small } from '@/components/typography/small';
  
 export default async function LoginForm() {
   return (
-    <section className='min-h-screen w-full flex items-center justify-center'>
+    <section className='min-h-dvh w-full flex items-center justify-center'>
       <Card className='md:min-w-96 border-none'>
         <CardHeader>
           <CardTitle>Sign in</CardTitle>

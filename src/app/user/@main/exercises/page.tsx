@@ -17,7 +17,7 @@ export default function ExercisesPage () {
     <>
       <div className="flex justify-between items-center">
         <div className="flex gap-4 items-center justify-center">
-          <H3 text="Exercises" />
+          <H3 text="Exercises" className="hidden md:block" />
           <Input 
             className="h-8"
             value={searchValue}
@@ -30,7 +30,7 @@ export default function ExercisesPage () {
           <Button size="sm" className="h-8" asChild>
             <Link href="/user/exercises/create">
               <SquarePlus />
-                  Create
+              <span className="hidden md:inline">Create</span>
             </Link>
           </Button>
         </div>

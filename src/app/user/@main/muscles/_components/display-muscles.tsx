@@ -15,7 +15,7 @@ export default function DisplayMuscles () {
   })
 
   return (
-    <div className="my-10 grid grid-cols-2 gap-2 w-full">
+    <div className="py-4 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
       {muscles?.map(m => {
         const { muscleGroup, ...muscle } = m
         return <MuscleComponent key={m.id} muscle={muscle} muscleGroup={muscleGroup} />

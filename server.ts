@@ -1,5 +1,5 @@
 import next from "next";
-import { Server as SocketServer } from "socket.io";
+import { Server as SocketServer, type Socket } from "socket.io";
 import { createServer } from "http"
 import { parse } from "url";
 
@@ -31,8 +31,21 @@ app.prepare().then(async () => {
     }
   })
 
+  global.socketServer.on("connection", (socket: Socket) => {
+    console.log("✅ Socket connected:", socket.id);
+
+    socket.onAny((event, args) => {
+      if (dev) console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)
+    })
+
+    socket.on("disconnect", (reason) => {
+      console.log(`⚠️ Socket ${socket.id} disconnected due to: ${reason}`);
+      socket.removeAllListeners()
+    });
+  });
+
   server.listen(port, () => {
-    console.log(`> Listeing on PORT: ${port}`)
+    console.log(`> Listening on PORT: ${port}`)
   })
 }).catch((error) => {
   console.error("❌ Server startup error:", error);

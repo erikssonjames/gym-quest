@@ -20,7 +20,7 @@ export default function SignupPage() {
   }
 
   return (
-    <section className='min-h-screen w-full flex items-center justify-center'>
+    <section className='min-h-dvh w-full flex items-center justify-center'>
       {currentPage === "sign-up-form" && (
         <Card className='md:min-w-96 border-none'>
           <CardHeader>

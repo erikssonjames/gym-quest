@@ -222,7 +222,7 @@ function EditWorkout ({ workout, children }: { workout: WorkoutOutput, children:
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-7xl mx-0 md:mx-10 max-h-screen md:h-[calc(100vh-4rem)] flex flex-col md:px-20 md:py-10">
+      <DialogContent className="sm:max-w-7xl mx-0 md:mx-10 max-h-dvh md:h-[calc(100vh-4rem)] flex flex-col md:px-20 md:py-10">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit workout</DialogTitle>
           <DialogDescription></DialogDescription>

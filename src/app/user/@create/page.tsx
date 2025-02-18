@@ -32,7 +32,7 @@ export default function Create () {
   }, [debouncedUsername, checkUsername])
 
   return (
-    <section className="w-screen h-screen flex items-center justify-center">
+    <section className="w-screen h-dvh flex items-center justify-center">
       <div className="flex gap-10 flex-col min-w-96 relative">
         <div>
           <h1 className="font-semibold text-xl">Welcome!</h1>

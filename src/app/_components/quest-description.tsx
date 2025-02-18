@@ -445,7 +445,7 @@ export default function GymDescription () {
           <div className="absolute pointer-events-none inset-0 flex items-center justify-center dark:bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_5%,black)]"></div>
         </div>
       </div>
-      <div className="sticky w-screen h-screen self-start xl:px-20 pt-24 pb-10 top-0 flex flex-col justify-start gap-10 overflow-hidden">
+      <div className="sticky w-screen h-dvh self-start xl:px-20 pt-24 pb-10 top-0 flex flex-col justify-start gap-10 overflow-hidden">
         <div className="w-full flex flex-col justify-start md:px-0 px-4">
           <h1 className="text-lg md:text-3xl w-fit" id="QUESTDESCRIPTION-START">Quests + Gym?</h1>
           <p className="text-primary">Let us explain..</p>

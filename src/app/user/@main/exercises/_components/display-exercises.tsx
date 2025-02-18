@@ -30,7 +30,7 @@ function DisplayExercises ({ search }: { search: string }) {
     : []
 
   return (
-    <div className="py-10 grid grid-cols-2 gap-2 w-full">
+    <div className="py-4 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
       {filteredExercises.map(e => {
         const { muscles, ...exercise } = e
         return (
