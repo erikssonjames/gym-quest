@@ -5,7 +5,7 @@ import http from "http"
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
-const port = 3000;
+const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
@@ -17,7 +17,7 @@ declare global {
 
 process.on("uncaughtException", (err) => {
   console.error("❌ Uncaught Exception:", err);
-  process.exit(1); // Force exit
+  setTimeout(() => process.exit(1), 3000)
 });
 
 process.on("unhandledRejection", (reason) => {
@@ -32,28 +32,31 @@ async function startServer () {
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     const server = http.createServer(expressApp); // Create an HTTP server
 
-    // Initialize Socket.io on the HTTP server
-    if (!globalThis.socketServer) {
-      globalThis.socketServer = new SocketServer(server, {
-        cors: {
-          origin: ["http://localhost:3000", "https://your-production-url.com"],
-          methods: ["GET", "POST"],
-        },
-      });
-  
-      // Socket.io connection event
-      globalThis.socketServer.on("connection", (socket: Socket) => {
-        console.log("✅ Socket connected:", socket.id);
-  
-        socket.onAny((event, args) => {
-          console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)
-        })
-  
-        socket.on("disconnect", () => {
-          console.log("⚠️ Socket disconnected:", socket.id);
-        });
-      });
+    if (globalThis.socketServer) {
+      await globalThis.socketServer.close()
     }
+
+    // Initialize Socket.io on the HTTP server
+    globalThis.socketServer = new SocketServer(server, {
+      cors: {
+        origin: ["http://localhost:3000", "https://gymquest.com"],
+        methods: ["GET", "POST"],
+      },
+    });
+
+    // Socket.io connection event
+    globalThis.socketServer.on("connection", (socket: Socket) => {
+      console.log("✅ Socket connected:", socket.id);
+
+      socket.onAny((event, args) => {
+        if (dev) console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)
+      })
+
+      socket.on("disconnect", (reason) => {
+        console.log(`⚠️ Socket ${socket.id} disconnected due to: ${reason}`);
+        socket.removeAllListeners()
+      });
+    });
 
 
     // Next.js request handler
@@ -63,7 +66,7 @@ async function startServer () {
 
     // Start the server
     server.listen(port, () => {
-      console.log(`🚀 Next.js server with WebSocket running on http://localhost:${port}`);
+      console.log(`🚀 Next.js server with WebSocket running on http://localhost:${port} in ${dev ? "Dev mode" : "Procution mode"}`);
     });
   } catch (e) {
     console.error("❌ Server startup error:", e);
