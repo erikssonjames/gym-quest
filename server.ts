@@ -15,46 +15,60 @@ declare global {
   var socketServer: SocketServer | undefined
 }
 
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err);
+  process.exit(1); // Force exit
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ Unhandled Promise Rejection:", reason);
+});
+
 async function startServer () {
-  await app.prepare()
+  try {
+    await app.prepare()
 
-  const expressApp = express();
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  const server = http.createServer(expressApp); // Create an HTTP server
+    const expressApp = express();
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    const server = http.createServer(expressApp); // Create an HTTP server
 
-  // Initialize Socket.io on the HTTP server
-  if (!globalThis.socketServer) {
-    globalThis.socketServer = new SocketServer(server, {
-      cors: {
-        origin: ["http://localhost:3000", "https://your-production-url.com"],
-        methods: ["GET", "POST"],
-      },
-    });
-  
-    // Socket.io connection event
-    globalThis.socketServer.on("connection", (socket: Socket) => {
-      console.log("✅ Socket connected:", socket.id);
-  
-      socket.onAny((event, args) => {
-        console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)
-      })
-  
-      socket.on("disconnect", () => {
-        console.log("⚠️ Socket disconnected:", socket.id);
+    // Initialize Socket.io on the HTTP server
+    if (!globalThis.socketServer) {
+      globalThis.socketServer = new SocketServer(server, {
+        cors: {
+          origin: ["http://localhost:3000", "https://your-production-url.com"],
+          methods: ["GET", "POST"],
+        },
       });
+  
+      // Socket.io connection event
+      globalThis.socketServer.on("connection", (socket: Socket) => {
+        console.log("✅ Socket connected:", socket.id);
+  
+        socket.onAny((event, args) => {
+          console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)
+        })
+  
+        socket.on("disconnect", () => {
+          console.log("⚠️ Socket disconnected:", socket.id);
+        });
+      });
+    }
+
+
+    // Next.js request handler
+    expressApp.all("*", (req, res) => {
+      return handler(req, res);
     });
+
+    // Start the server
+    server.listen(port, () => {
+      console.log(`🚀 Next.js server with WebSocket running on http://localhost:${port}`);
+    });
+  } catch (e) {
+    console.error("❌ Server startup error:", e);
+    process.exit(1); // Exit process if the server fails
   }
-
-
-  // Next.js request handler
-  expressApp.all("*", (req, res) => {
-    return handler(req, res);
-  });
-
-  // Start the server
-  server.listen(port, () => {
-    console.log(`🚀 Next.js server with WebSocket running on http://localhost:${port}`);
-  });
 }
 
 startServer().catch((error) => console.error("Server error:", error))
