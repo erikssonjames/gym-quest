@@ -26,7 +26,7 @@ app.prepare().then(async () => {
 
   global.socketServer = new SocketServer(server, {
     cors: {
-      origin: ["http://localhost:3000", "https://gymquest.com", "gym-quest.onrender.com", "www.qymquest.net" ],
+      origin: ["http://localhost:4000", "https://gymquest.com", "gym-quest.onrender.com", "www.qymquest.net" ],
       methods: ["GET", "POST"],
     }
   })
