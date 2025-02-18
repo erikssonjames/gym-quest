@@ -90,13 +90,13 @@ function WorkoutSessionComponent (
       </div>
 
       <div>
-        <DeleteWorkoutSessionButton />
+        <DeleteWorkoutSessionButton workoutSessionID={workoutSession.id} />
       </div>
     </div>
   )
 }
 
-function DeleteWorkoutSessionButton () {
+function DeleteWorkoutSessionButton ({ workoutSessionID }: { workoutSessionID: string }) {
   const utils = api.useUtils()
 
   const { mutate, isPending } = api.workout.deleteWorkoutSession.useMutation({
@@ -151,7 +151,7 @@ function DeleteWorkoutSessionButton () {
             variant="destructive" 
             onClick={(e) => {
               e.stopPropagation()
-              mutate()
+              mutate(workoutSessionID)
             }} 
             disabled={isPending}
           >

@@ -540,7 +540,8 @@ export const workoutRouter = createTRPCRouter({
     }),
 
   deleteWorkoutSession: protectedProcedure
-    .mutation(async ({ ctx }) => {
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
       if (!userId) {
@@ -550,7 +551,10 @@ export const workoutRouter = createTRPCRouter({
         })
       }
 
-      await ctx.db.delete(workoutSession).where(eq(workoutSession.userId, userId))
+      await ctx.db.delete(workoutSession).where(and(
+        eq(workoutSession.userId, userId),
+        eq(workoutSession.id, input)
+      ))
     }),
   
   getWorkoutSessionById: protectedProcedure

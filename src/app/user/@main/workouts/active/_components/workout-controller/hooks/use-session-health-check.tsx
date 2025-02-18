@@ -1,7 +1,7 @@
 import { getSetCollectionBySessionLog, getStartedSessionLogs, getWorkoutSetByFragment, getWorkoutSetBySessionLog } from "@/lib/workout/sessionUtils";
 import type { WorkoutActiveSessionOutput } from "@/server/api/types/output";
 import { api } from "@/trpc/react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 export function useSessionHealthCheck () {
   const utils = api.useUtils()
@@ -14,7 +14,9 @@ export function useSessionHealthCheck () {
     isPending: endSessionLogFragmentPending
   } = api.workout.endWorkoutSessionLogFragment.useMutation()
 
-  const isPending = endSessionLogPending || endSessionLogFragmentPending
+  const isPending = useMemo(() => {
+    return endSessionLogFragmentPending ||endSessionLogPending
+  }, [endSessionLogFragmentPending, endSessionLogPending])
 
   const performHealthCheck = useCallback(async (session: NonNullable<WorkoutActiveSessionOutput>) => {
     if (isPending) return false
@@ -97,6 +99,7 @@ export function useSessionHealthCheck () {
 
   return {
     performHealthCheck,
-    isPending: endSessionLogPending || endSessionLogFragmentPending,
+    isPending
   }
+
 }

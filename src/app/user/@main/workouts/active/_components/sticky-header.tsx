@@ -21,7 +21,12 @@ export default function StickyHeader () {
         </div>
       ) : (
         <div className="flex justify-between items-center px-4">
-          <H3 text="Active Workout" />
+          <div className="flex flex-col justify-center">
+            <div className="rounded-md">
+              <p className="text-sm">{elapsedTime}</p>
+            </div>
+            <H3 text="Active Workout" />
+          </div>
           <EndWorkoutButton />
         </div>
       )}

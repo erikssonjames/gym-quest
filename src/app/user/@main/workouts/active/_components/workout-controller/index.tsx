@@ -37,15 +37,16 @@ type PageProps = {
   isCollapsed: boolean,
   toggleCollapse: () => void,
   session: NonNullable<WorkoutActiveSessionOutput>
+  key: string
 }
 
 export default function WorkoutController () {
-  const { data: session } = api.workout.getActiveWorkoutSession.useQuery()
-  const { mutate: createFragment, isPending } = api.workout.addWorkoutSessionLogFragment.useMutation()
+  const { data: session, isPending: sessionPending } = api.workout.getActiveWorkoutSession.useQuery()
+  const { mutate: createFragment, isPending: createFragmentPending } = api.workout.addWorkoutSessionLogFragment.useMutation()
   const [collapsed, setCollapsed] = useState(false)
   const ref = useContainerRef()
 
-  const healthCheck = useSessionHealthCheck()
+  const { isPending, performHealthCheck } = useSessionHealthCheck()
   const [isHealthCheckPending, setIsHealthCheckPending] = useState(false);
   const [isSessionHealthy, setIsSessionHealthy] = useState(false);
 
@@ -55,7 +56,7 @@ export default function WorkoutController () {
     let isMounted = true; // Prevent state update if unmounted
     setIsHealthCheckPending(true);
 
-    healthCheck.performHealthCheck(session).then(() => {
+    performHealthCheck(session).then(() => {
       if (isMounted) {
         setIsSessionHealthy(true);
       }
@@ -68,17 +69,18 @@ export default function WorkoutController () {
     });
 
     return () => { isMounted = false };
-  }, [session, healthCheck]);
+  }, [session, performHealthCheck]);
 
   const [currentState, setCurrentState] = useState<WorkoutControllerState>("loading")
 
   useEffect(() => {
-    if (!session || isPending) {
+    if (!session || createFragmentPending || sessionPending || isPending) {
       setCurrentState("loading")
       return
     }
 
     if (!isSessionHealthy || isHealthCheckPending) {
+      setCurrentState("loading")
       return
     }
 
@@ -122,7 +124,7 @@ export default function WorkoutController () {
       },
       sessionId: session.id
     })
-  }, [session, createFragment, isPending, isHealthCheckPending, isSessionHealthy])
+  }, [session, createFragment, createFragmentPending, sessionPending, isHealthCheckPending, isSessionHealthy, isPending])
 
   const currentPage = useMemo<{ maxH: string, h: string, component: ReactNode } | null>(() => {
     if (!session) return null
@@ -130,12 +132,13 @@ export default function WorkoutController () {
     const props: PageProps = {
       isCollapsed: collapsed,
       toggleCollapse: () => setCollapsed(prev => !prev),
-      session
+      session,
+      key: session.id
     }
 
     switch (currentState) {
-    case "active_set":
-      return { component: <FragmentInput {...props} />, maxH: 'max-h-72', h: 'h-72' }
+    case "active_set": 
+      return { component: <FragmentInput  {...props} />, maxH: 'max-h-72', h: 'h-72' }
     case "start_workout":
       return { component: <StartWorkout {...props} />, maxH: 'max-h-32', h: 'h-32' }
     case "start_exercise":
@@ -151,13 +154,45 @@ export default function WorkoutController () {
     }
   }, [currentState, session, collapsed])
 
+  useEffect(() => {
+    console.log('currentState', currentState)
+  }, [currentState])
+
+  // useEffect(() => {
+  //   console.log("session")
+  // }, [session])
+
+  // useEffect(() => {
+  //   console.log("isHealthCheckPending")
+  // }, [isHealthCheckPending])
+
+  // useEffect(() => {
+  //   console.log("isSessionHealthy")
+  // }, [isSessionHealthy])
+
+  // useEffect(() => {
+  //   console.log("createFragmentPending")
+  // }, [createFragmentPending])
+
+  // useEffect(() => {
+  //   console.log("sessionPending")
+  // }, [sessionPending])
+
+  // useEffect(() => {
+  //   console.log("createFragment")
+  // }, [createFragment])
+
+  // useEffect(() => {
+  //   console.log("healthCheck")
+  // }, [healthCheck])
+
   if (!session || !ref.current || !currentPage) return null
 
   return (
     <>
       {createPortal(
-        <div className="absolute left-0 right-0 bottom-0 md:px-10 md:pb-4 flex items-center z-10 p-2">
-          <div className="w-full bg-background border p-6 rounded-lg shadow-2xl max-w-6xl mx-auto max-2">
+        <div className="absolute left-0 right-0 bottom-0 md:px-10 md:pb-4 flex items-center z-10">
+          <div className="w-full bg-background border-t md:border p-6 rounded-t-lg md:rounded-lg shadow-2xl max-w-6xl mx-auto max-2">
             <div 
               className={cn(
                 "max-w-96 mx-auto overflow-hidden transition-all h-44",
@@ -184,7 +219,7 @@ function StartWorkout ({ isCollapsed, session, toggleCollapse }: PageProps) {
   const set = getNextWorkoutSet(session)
 
   const utils = api.useUtils()
-  const { mutateAsync } = api.workout.addWorkoutSessionLog.useMutation({
+  const { mutateAsync, isPending } = api.workout.addWorkoutSessionLog.useMutation({
     onSuccess: async () => {
       await utils.workout.getActiveWorkoutSession.invalidate()
     }
@@ -221,7 +256,10 @@ function StartWorkout ({ isCollapsed, session, toggleCollapse }: PageProps) {
         </Button>
       </div>
 
-      <Button className="w-full mt-2" type="button" onClick={onStartWorkout}>Start</Button>
+      <Button className="w-full mt-2" type="button" onClick={onStartWorkout} disabled={isPending}>
+        Start
+        {!isPending && <Loader2 className="animate-spin" />}
+      </Button>
     </>
   )
 }
@@ -231,7 +269,7 @@ function StartExercise ({ isCollapsed, session, toggleCollapse }: PageProps) {
   const mostRecentSessionLog = getMostRecentEndedSessionLog(session)
 
   const utils = api.useUtils()
-  const { mutateAsync: startSessionLogs } = api.workout.startWorkoutSessionLogs.useMutation({
+  const { mutateAsync: startSessionLogs, isPending } = api.workout.startWorkoutSessionLogs.useMutation({
     onSuccess: () => {
       void utils.workout.getActiveWorkoutSession.invalidate()
     }
@@ -290,7 +328,10 @@ function StartExercise ({ isCollapsed, session, toggleCollapse }: PageProps) {
       </div>
 
 
-      <Button className="w-full mt-2" type="button" onClick={onStartWorkout}>Start</Button>
+      <Button className="w-full mt-2" type="button" onClick={onStartWorkout} disabled={isPending}>
+        Start
+        {isPending && <Loader2 className="animate-spin" />}
+      </Button>
     </>
   )
 }
@@ -299,7 +340,7 @@ function FragmentInput ({ session, toggleCollapse, isCollapsed }: PageProps) {
   const activeFragment = getActiveSessionLogFragment({ session })
 
   const utils = api.useUtils()
-  const { mutateAsync: endFragment } = api.workout.endWorkoutSessionLogFragment.useMutation({
+  const { mutateAsync: endFragment, isPending } = api.workout.endWorkoutSessionLogFragment.useMutation({
     onSuccess: async () => {
       await utils.workout.getActiveWorkoutSession.invalidate()
     }
@@ -378,7 +419,10 @@ function FragmentInput ({ session, toggleCollapse, isCollapsed }: PageProps) {
         </div>
       </div>
 
-      <Button className="w-full mt-8" type="button" onClick={onAddFragment}>Complete Set</Button>
+      <Button className="w-full mt-8" type="button" onClick={onAddFragment} disabled={isPending}>
+        Complete Set
+        {isPending && <Loader2 className="animate-spin" />}
+      </Button>
     </>
   )
 }
@@ -389,7 +433,7 @@ function GoToNextSet ({ session, isCollapsed, toggleCollapse }: PageProps) {
   const lastActiveSessionLogFragment = nextSet ? getLastActiveSessionLogFragment(session, nextSet) : undefined
 
   const utils = api.useUtils()
-  const { mutateAsync: startNewFragment } = api.workout.addWorkoutSessionLogFragment.useMutation({
+  const { mutateAsync: startNewFragment, isPending } = api.workout.addWorkoutSessionLogFragment.useMutation({
     onSuccess: () => {
       void utils.workout.getActiveWorkoutSession.invalidate()
     }
@@ -441,12 +485,18 @@ function GoToNextSet ({ session, isCollapsed, toggleCollapse }: PageProps) {
           ))}
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Sets Remaing</p>
-          <p>{(nextSet.workoutSetCollections.at(0)?.reps.length ?? 0) - lastActiveSessionLog.workoutSessionLogFragments.length}</p>
+          <p className="text-xs text-muted-foreground">Sets Remaining</p>
+          <p>
+            {(nextSet.workoutSetCollections.at(0)?.reps.length ?? 0) - 
+            lastActiveSessionLog.workoutSessionLogFragments.length}
+          </p>
         </div>
       </div>
 
-      <Button className="w-full mt-8" type="button" onClick={onStartNextSet}>Start</Button>
+      <Button className="w-full mt-8" type="button" onClick={onStartNextSet} disabled={isPending}>
+        Start
+        {isPending && <Loader2 className="animate-spin" />}
+      </Button>
     </>
   )
 }

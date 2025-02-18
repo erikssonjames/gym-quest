@@ -3,7 +3,7 @@ import WorkoutHistory from "./_components/workout-history";
 
 export default function WorkoutsPage () {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 py-4">
       <ActiveWorkouts />
       <WorkoutHistory />
     </div>

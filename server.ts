@@ -1,5 +1,5 @@
 import next from "next";
-import { Server as SocketServer, type Socket } from "socket.io";
+import { Server } from "socket.io";
 import { createServer } from "http"
 import { parse } from "url";
 
@@ -9,9 +9,32 @@ const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 const app = next({ dev, port });
 const handler = app.getRequestHandler();
 
+interface ServerToClientEvents {
+  noArg: () => void;
+  basicEmit: (a: number, b: string, c: Buffer) => void;
+  withAck: (d: string, callback: (e: number) => void) => void;
+}
+
+interface ClientToServerEvents {
+  hello: () => void;
+}
+
+interface InterServerEvents {
+  ping: () => void;
+}
+
+interface SocketData {
+  userId: string
+}
+
 declare global {
   // eslint-disable-next-line no-var
-  var socketServer: SocketServer | undefined
+  var socketServer: Server<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  > | undefined
 }
 
 app.prepare().then(async () => {
@@ -24,15 +47,30 @@ app.prepare().then(async () => {
     await global.socketServer.close()
   }
 
-  global.socketServer = new SocketServer(server, {
+  global.socketServer = new Server(server, {
     cors: {
       origin: ["http://localhost:4000", "https://gymquest.com", "gym-quest.onrender.com", "www.qymquest.net" ],
       methods: ["GET", "POST"],
     }
   })
 
-  global.socketServer.on("connection", (socket: Socket) => {
+  global.socketServer.on("connection", (socket) => {
     console.log("✅ Socket connected:", socket.id);
+
+    const { userId } = socket.handshake.auth as {
+      userId?: string;
+    };
+
+    if (userId) {
+      socket.data
+      socket.data.userId = userId;
+      void socket.join(userId);
+      console.log(`Socket ${socket.id} joined room: ${userId}`);
+    } else {
+      console.log("User ID not provided, disconnecting socket.");
+      socket.disconnect();
+      return;
+    }
 
     socket.onAny((event, args) => {
       if (dev) console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)

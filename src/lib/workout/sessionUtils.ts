@@ -176,7 +176,7 @@ export function getLastActiveSessionLogFragment (session: Session, set: Set): Fr
     )
     allFragments = [...allFragments, ...foundFragments ?? []]
   }
-  return allFragments.sort((a, b) => a.endedAt.getTime() - b.endedAt.getTime()).at(0)
+  return allFragments.sort((a, b) => b.endedAt.getTime() - a.endedAt.getTime()).at(0)
 }
 
 export function getSessionLogWithFewestFragments (session: Session, set: Set): Log {
@@ -201,7 +201,7 @@ export function getSessionLogWithFewestFragments (session: Session, set: Set): L
 export function getMostRecentEndedSessionLog (session: Session) {
   return session.workoutSessionLogs
     .filter(l => !!l.endedAt)
-    .sort((a, b) => (a.endedAt?.getTime() ?? 0) - (b.endedAt?.getTime() ?? 0))
+    .sort((a, b) => (b.endedAt?.getTime() ?? 0) - (a.endedAt?.getTime() ?? 0))
     .at(0)
 }
 
