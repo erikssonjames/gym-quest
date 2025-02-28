@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum TimeEmojis {
   HOURGLASS_DONE = "hourglass_done",

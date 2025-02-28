@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum SmileyFaceEmojis {
   SLIGHTLY_SMILING_FACE = "slightly_smiling_face",

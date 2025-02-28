@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum NegativeFacesEmojis {
   FACE_WITH_STEAM = "face_with_steam",

@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum SportEmojis {
   SOCCER_BALL = "soccer_ball",

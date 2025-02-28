@@ -21,7 +21,6 @@ import {
   workoutSessionLog,
   workoutSessionLogFragment,
   WorkoutSessionLogFragmentZod,
-  type WorkoutSessionLogFragment,
 } from "@/server/db/schema/workout";
 import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -30,7 +29,7 @@ import { getUserFriendsIds } from "../utils/friends";
 import { emitServerSocketEvent } from "@/server/socket";
 import { WorkoutEvent } from "@/socket/enums/workout";
 import { getCtxUserId } from "@/server/utils/user";
-import { exercise, type Exercise } from "@/server/db/schema/exercise";
+import { exercise } from "@/server/db/schema/exercise";
 
 function sortWorkoutResponse (workouts: Array<FullWorkout>) {
   return workouts.map(w => {
@@ -720,22 +719,22 @@ export const workoutRouter = createTRPCRouter({
         })
       }
 
-      const previousExerciseData = new Map<
-        Exercise["id"],
-        {
-          values: Map<
-            WorkoutSessionLogFragment["reps"],
-            {
-              lastSet: {
-                duration?: number,
-                weight?: number
-              },
-              lastFiveAverage?: number
-            }
-          >,
-          repsLastSet: number
-        }
-      >()
+      // const previousExerciseData = new Map<
+      //   Exercise["id"],
+      //   {
+      //     values: Map<
+      //       WorkoutSessionLogFragment["reps"],
+      //       {
+      //         lastSet: {
+      //           duration?: number,
+      //           weight?: number
+      //         },
+      //         lastFiveAverage?: number
+      //       }
+      //     >,
+      //     repsLastSet: number
+      //   }
+      // >()
 
       const exerciseIds = foundWorkout.workoutSets.flatMap(set => {
         return set.workoutSetCollections.flatMap(setCollection => setCollection.exerciseId)

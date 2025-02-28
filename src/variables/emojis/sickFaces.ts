@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum SickFacesEmojis {
   FACE_WITH_MASK = "face_with_mask",

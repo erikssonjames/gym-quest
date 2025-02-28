@@ -7,7 +7,7 @@ import { io, type Socket } from "socket.io-client";
 import { useNotificationSocketEventHandlers } from "./event-handlers/notifications";
 import { useUserSocketEventHandlers } from "./event-handlers/user";
 import { useWorkoutSocketEventHandlers } from "./event-handlers/workout";
-import { WorkoutSocketEventPayloads } from "@/socket/types/workout";
+import type { WorkoutSocketEventPayloads } from "@/socket/types/workout";
 
 export default function SocketEventListener() {
   const { data: sessionData } = useSession();

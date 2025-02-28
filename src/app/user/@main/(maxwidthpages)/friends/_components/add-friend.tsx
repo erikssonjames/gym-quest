@@ -94,13 +94,12 @@ function SendFriendRequestButton ({ userId }: { userId: string }) {
       toast.error("Could not send a friend request...")
     }
   })
-  const { mutate: testSocketServer } = api.user.testSocketServer.useMutation()
 
   return (
     <Button
       className="h-7" 
       size="sm" 
-      onClick={() => testSocketServer()}
+      onClick={() => mutate(userId)}
       disabled={sendFriendRequestPending}
     >
       <span className="hidden md:inline">Add Friend</span>

@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum OtherObjectsEmojis {
   CIGARETTE = "cigarette",

@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum TravelAndPlacesEmojis {
   GLOBE_SHOWING_AFRICA_EUROPE = "globe_showing_africa_europe",

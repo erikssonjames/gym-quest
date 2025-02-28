@@ -13,20 +13,10 @@ export default function CreateWorkoutPage () {
   const utils = api.useUtils()
 
   const { data: workouts, isPending } = api.workout.getWorkouts.useQuery()
-  // const { mutate } = api.workout.addWorkoutSession.useMutation({
-  //   onSuccess: () => {
-  //     void utils.workout.getActiveWorkoutSession.invalidate()
-  //   }
-  // })
-  
-
-  const [workoutSessionId, setWorkoutSessionId] = useState<string>()
   // const { data: test } = api.workout.test.useQuery()
   const { mutate } = api.workout.createWorkoutSession.useMutation({
-    onSuccess: (workoutSessionId) => {
-      // void utils.workout.getActiveWorkoutSession.invalidate()
+    onSuccess: () => {
       void utils.workout.getActiveWorkoutSession.invalidate()
-      setWorkoutSessionId(workoutSessionId)
     }
   })
 

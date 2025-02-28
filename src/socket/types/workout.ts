@@ -1,6 +1,6 @@
 import type { Workout, WorkoutSession } from "@/server/db/schema/workout";
 import type { WorkoutEvent } from "../enums/workout";
-import { EmojiDefinition } from "@/variables/emojis/types";
+import type { EmojiDefinition } from "@/variables/emojis/types";
 
 export interface WorkoutSocketEventPayloads {
   [WorkoutEvent.NEW_PUBLIC_WORKOUT]: {

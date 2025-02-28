@@ -1,4 +1,4 @@
-import { EmojiDefinition } from "./types";
+import { type EmojiDefinition } from "./types";
 
 export enum NeutralFacesEmojis {
   NEUTRAL_FACE = "neutral_face",
