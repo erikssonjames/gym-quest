@@ -1,4 +1,4 @@
-import { useDisplayTimer } from "@/hooks/useDisplayTimer";
+import { useDisplayTimer } from "@/hooks/use-display-timer";
 import { cn } from "@/lib/utils";
 import type { CSSProperties } from "react";
 

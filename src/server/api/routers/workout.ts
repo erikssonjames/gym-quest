@@ -1,7 +1,8 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
-  protectedProcedure
+  protectedProcedure,
+  publicProcedure
 } from "@/server/api/trpc";
 import {
   workout,
@@ -17,16 +18,19 @@ import {
   workoutToUser,
   workoutSession,
   CreateWorkoutSessionZod,
-  CreateWorkoutSessionLogZod,
   workoutSessionLog,
-  CreateWorkoutSessionLogFragmentZod,
   workoutSessionLogFragment,
   WorkoutSessionLogFragmentZod,
-  WorkoutSessionLogZod,
+  type WorkoutSessionLogFragment,
 } from "@/server/db/schema/workout";
-import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { type TRPCContext } from "@/trpc/server";
+import { getUserFriendsIds } from "../utils/friends";
+import { emitServerSocketEvent } from "@/server/socket";
+import { WorkoutEvent } from "@/socket/enums/workout";
+import { getCtxUserId } from "@/server/utils/user";
+import { exercise, type Exercise } from "@/server/db/schema/exercise";
 
 function sortWorkoutResponse (workouts: Array<FullWorkout>) {
   return workouts.map(w => {
@@ -140,14 +144,7 @@ export const workoutRouter = createTRPCRouter({
     }),
 
   getWorkouts: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session?.user.id
-
-    if (!userId) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Not authorized to fetch this resource"
-      });
-    }
+    const userId = getCtxUserId(ctx)
 
     const savedWorkoutIds = await ctx.db
       .select({ id: workout.id })
@@ -404,16 +401,23 @@ export const workoutRouter = createTRPCRouter({
       }
     }),
 
+  getFriendsActiveWorkoutSessions: protectedProcedure
+    .query(async ({ ctx }) => {
+      const friendIds = await getUserFriendsIds(ctx)
+      
+      const activeFriendWorkouts = await ctx.db.query.workoutSession.findMany({
+        where: and(
+          inArray(workoutSession.userId, friendIds),
+          isNull(workoutSession.endedAt)
+        )
+      })
+
+      return activeFriendWorkouts
+    }),
+
   getActiveWorkoutSession: protectedProcedure
     .query(async ({ ctx }) => {
-      const userId = ctx.session.user.id
-
-      if (!userId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Not authorized to fetch this resource"
-        })
-      }
+      const userId = getCtxUserId(ctx)
 
       const session = await ctx.db.query.workoutSession.findFirst({
         where: and(eq(workoutSession.userId, userId), isNull(workoutSession.endedAt)),
@@ -442,72 +446,7 @@ export const workoutRouter = createTRPCRouter({
 
       if (!session) return null
 
-      const exerciseIds = session.workout.workoutSets.flatMap(set => {
-        return set.workoutSetCollections.map(col => col.exercise.id)
-      })
-
-      const prevSessionsIds = (await ctx.db
-        .select({ id: workoutSessionLog.id })
-        .from(workoutSessionLog)
-        .innerJoin(workoutSession, eq(workoutSession.id, workoutSessionLog.workoutSessionId))
-        .where(and(inArray(workoutSessionLog.exerciseId, exerciseIds), eq(workoutSession.userId, userId))))
-        .map(v => v.id)
-
-      const previousSessionLogs = await ctx.db.query.workoutSessionLog.findMany({
-        where: inArray(workoutSessionLog.id, prevSessionsIds),
-        with: {
-          workoutSessionLogFragments: {
-            columns: {
-              reps: true,
-              weight: true,
-              duration: true,
-              endedAt: true,
-              skipped: true            }
-          }
-        },
-        orderBy: [desc(workoutSessionLog.startedAt)],
-        columns: {
-          exerciseId: true,
-        }
-      })
-
-      const exerciseTargetMap = new Map(
-        previousSessionLogs.map(
-          log => ([
-            log.exerciseId,
-            log.workoutSessionLogFragments
-              .filter(f => !f.skipped && !f.endedAt && f.reps !== null)
-              .map(fragment => ({
-                targetReps: fragment.reps!, targetWeight: fragment.weight, targetDuration: fragment.duration
-              }))
-              .sort((a, b) => {
-                if (a.targetReps === b.targetReps) {
-                  return (a.targetWeight ?? 0) - (b.targetWeight ?? 0) - (a.targetDuration ?? 0) - (b.targetDuration ?? 0)
-                }
-                return a.targetReps - b.targetReps
-              })
-          ])
-        )
-      )
-
-      const setsWithTarget = session.workout.workoutSets.map(set => {
-        return {
-          ...set,
-          workoutSetCollections: set.workoutSetCollections.map(col => ({
-            ...col,
-            target: 
-              col.reps.map(rep => exerciseTargetMap.get(col.exerciseId)?.find(target => target.targetReps === rep) ?? undefined)
-          }))
-        }
-      })
-
-      return {
-        ...session,
-        workout: {
-          ...session.workout,
-          workoutSets: setsWithTarget
-        }
-      }
+      return session
     }),
 
   getWorkoutSessions: protectedProcedure
@@ -601,82 +540,273 @@ export const workoutRouter = createTRPCRouter({
       return session
     }),
 
-  addWorkoutSession: protectedProcedure
+  createWorkoutSession: protectedProcedure
     .input(CreateWorkoutSessionZod)
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
+      const userId = getCtxUserId(ctx)
 
-      if (!userId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Not authorized to fetch this resource"
-        })
-      }
-
-      const activeSessions = await ctx.db.query.workoutSession.findMany({
-        where: and(eq(workoutSession.userId, userId), isNull(workoutSession.endedAt))
+      const hasActiveWorkoutSession = await ctx.db.query.workoutSession.findFirst({
+        where: and(
+          isNull(workoutSession.endedAt),
+          eq(workoutSession.userId, userId)
+        )
       })
 
-      if (activeSessions.length > 0) {
+      if (hasActiveWorkoutSession) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Looks like you already have an active workout."
+          message: "Please finish your active workout before starting a new one."
         })
       }
 
-      return (await ctx.db.insert(workoutSession).values({ ...input, userId }).returning({ id: workoutSession.id })).at(0)
-    }),
+      const foundWorkout = await ctx.db.query.workout.findFirst({
+        where: or(
+          and(
+            eq(workout.userId, userId),
+            eq(workout.id, input.workoutId)
+          ),
+          and(
+            eq(workout.isPublic, true),
+            eq(workout.id, input.workoutId)
+          )
+        ),
+        with: {
+          workoutSets: {
+            with: {
+              workoutSetCollections: {
+                with: {
+                  exercise: true
+                }
+              }
+            }
+          }
+        },
+      })
 
-  addWorkoutSessionLog: protectedProcedure
-    .input(CreateWorkoutSessionLogZod)
-    .mutation(async ({ ctx, input }) => {
-      await validateWorkoutSession(ctx, input.workoutSessionId)
+      if (!foundWorkout) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Could not find the submitted workout."
+        })
+      }
 
-      const createdLog = await ctx.db.insert(workoutSessionLog).values(input).returning({ id: workoutSessionLog.id })
+      const createdWorkoutSession = (await ctx.db.insert(workoutSession).values({
+        userId,
+        workoutId: input.workoutId
+      }).returning()).at(0)
 
-      if (!createdLog[0]?.id) {
+      if (!createdWorkoutSession) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Something went wrong."
         })
       }
 
-      await ctx.db.insert(workoutSessionLogFragment).values({
+      if (createdWorkoutSession) {
+        const friends = await getUserFriendsIds(ctx)
+        emitServerSocketEvent({
+          event: WorkoutEvent.STARTED_NEW_WORKOUT,
+          recipients: friends,
+          payload: {
+            workoutSession: createdWorkoutSession,
+            sentAt: new Date(),
+            userId
+          }
+        })
+      }
+
+      const orderedSets = foundWorkout.workoutSets.sort((a, b) => a.order - b.order)
+      for (const [setIndex, set] of orderedSets.entries()) {
+        for (const setCollection of set.workoutSetCollections) {
+          const workoutSessionLogId = (await ctx.db.insert(workoutSessionLog).values({
+            exerciseId: setCollection.exerciseId,
+            order: setIndex,
+            workoutSessionId: createdWorkoutSession.id,
+          }).returning({ id: workoutSessionLog.id })).at(0)?.id
+
+          if (!workoutSessionLogId) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Something went wrong."
+            })
+          }
+
+          for (const [repCountIndex, repCount] of setCollection.reps.entries()) {
+            const duration = setCollection.duration.at(repCountIndex) ?? 0
+            const weight = setCollection.weight.at(repCountIndex) ?? 0
+
+            await ctx.db.insert(workoutSessionLogFragment).values({
+              workoutSessionLogId,
+              order: repCountIndex,
+              reps: repCount,
+              duration,
+              weight
+            })
+          }
+        }
+      }
+
+      return createdWorkoutSession.id
+    }),
+  
+  startWorkoutSession: protectedProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      await validateWorkoutSession(ctx, input)
+      const userId = getCtxUserId(ctx)
+
+      await ctx.db.update(workoutSession).set({
         startedAt: new Date(),
-        workoutSessionLogId: createdLog[0].id,
+        endedAt: null
+      }).where(and(
+        eq(workoutSession.userId, userId),
+        eq(workoutSession.id, input),
+        isNull(workoutSession.startedAt),
+        isNull(workoutSession.endedAt)
+      ))
+    }),
+
+  test: publicProcedure
+    .query(async ({ ctx }) => {
+      const userId = getCtxUserId(ctx)
+
+      const foundWorkoutSession = await ctx.db.query.workoutSession.findFirst({
+        with: {
+          workout: true,
+          workoutSessionLogs: {
+            with: {
+              exercise: true,
+              workoutSessionLogFragments: true
+            }
+          }
+        }
       })
+
+      if (!foundWorkoutSession) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong."
+        })
+      }
+
+      const foundWorkout = await ctx.db.query.workout.findFirst({
+        where: or(
+          and(
+            eq(workout.userId, userId),
+            eq(workout.id, foundWorkoutSession.workoutId)
+          ),
+          and(
+            eq(workout.isPublic, true),
+            eq(workout.id, foundWorkoutSession.workoutId)
+          )
+        ),
+        with: {
+          workoutSets: {
+            with: {
+              workoutSetCollections: {
+                with: {
+                  exercise: true
+                }
+              }
+            }
+          }
+        },
+      })
+
+      if (!foundWorkout) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Could not find the submitted workout."
+        })
+      }
+
+      const previousExerciseData = new Map<
+        Exercise["id"],
+        {
+          values: Map<
+            WorkoutSessionLogFragment["reps"],
+            {
+              lastSet: {
+                duration?: number,
+                weight?: number
+              },
+              lastFiveAverage?: number
+            }
+          >,
+          repsLastSet: number
+        }
+      >()
+
+      const exerciseIds = foundWorkout.workoutSets.flatMap(set => {
+        return set.workoutSetCollections.flatMap(setCollection => setCollection.exerciseId)
+      })
+
+      const exerciseToFragments = await ctx.db
+        .select()
+        .from(exercise)
+        .where(inArray(exercise.id, exerciseIds))
+        .innerJoin(
+          workoutSessionLog, 
+          and(
+            eq(workoutSessionLog.exerciseId, exercise.id),
+            isNotNull(workoutSessionLog.endedAt)
+          )
+        )
+        .innerJoin(
+          workoutSessionLogFragment,
+          and(
+            eq(workoutSessionLog.id, workoutSessionLogFragment.workoutSessionLogId),
+            isNotNull(workoutSessionLogFragment.endedAt)
+          )
+        )
+        .orderBy(desc(workoutSessionLogFragment.endedAt))
+        .limit(5)
+
+
+      return exerciseToFragments
+    }),
+
+  startWorkoutSessionLog: protectedProcedure
+    .input(z.object({
+      workoutSessionId: z.string(),
+      workoutSessionLogId: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await validateWorkoutSession(ctx, input.workoutSessionId)
+
+      const { workoutSessionId, workoutSessionLogId } = input
+
+      await ctx.db.update(workoutSessionLog).set({
+        startedAt: new Date(),
+        endedAt: null
+      }).where(and(
+        eq(workoutSessionLog.workoutSessionId, workoutSessionId),
+        eq(workoutSessionLog.id, workoutSessionLogId)
+      ))
     }),
 
   startWorkoutSessionLogs: protectedProcedure
-    .input(z.array(CreateWorkoutSessionLogZod).min(1))
+    .input(z.array(z.object({
+      workoutSessionId: z.string(),
+      workoutSessionLogId: z.string()
+    })).min(1))
     .mutation(async ({ ctx, input }) => {
-      for (const sessionLog of input) {
-        await validateWorkoutSession(ctx, sessionLog.workoutSessionId)
+      for (const { workoutSessionId, workoutSessionLogId } of input) {
+        await validateWorkoutSession(ctx, workoutSessionId)
 
-        const createdLog = await ctx.db.insert(workoutSessionLog).values(sessionLog).returning({ id: workoutSessionLog.id })
-
-        if (!createdLog[0]?.id) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Something went wrong."
-          })
-        }
-  
-        await ctx.db.insert(workoutSessionLogFragment).values({
+        await ctx.db.update(workoutSessionLog).set({
           startedAt: new Date(),
-          workoutSessionLogId: createdLog[0].id,
-        })
+          endedAt: null
+        }).where(and(
+          eq(workoutSessionLog.workoutSessionId, workoutSessionId),
+          eq(workoutSessionLog.id, workoutSessionLogId),
+        ))
       }
     }),
 
   endWorkoutSessionLog: protectedProcedure
     .input(z.object({
-      log: WorkoutSessionLogZod.omit({
-        startedAt: true,
-        endedAt: true,
-        exerciseId: true,
-        workoutSetCollectionId: true
-      }),
+      sessionLogId: z.string(),
       sessionId: z.string()
     }))
     .mutation(async ({ ctx, input }) => {
@@ -684,35 +814,43 @@ export const workoutRouter = createTRPCRouter({
 
       const activeFragments = await ctx.db.query.workoutSessionLogFragment.findMany({
         where: and(
-          eq(workoutSessionLogFragment.workoutSessionLogId, input.log.id),
+          eq(workoutSessionLogFragment.workoutSessionLogId, input.sessionLogId),
+          isNotNull(workoutSessionLogFragment.startedAt),
           isNull(workoutSessionLogFragment.endedAt)
-        ),
-        columns: {
-          id: true
-        }
+        )
       })
 
-      const toBeEndedFragmentsIds = activeFragments.map(f => f.id)
+      if (activeFragments.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You cant end this session since you have active sets in it."
+        })
+      }
 
       await ctx.db.update(workoutSessionLogFragment)
         .set({ endedAt: new Date() })
-        .where(inArray(workoutSessionLogFragment.id, toBeEndedFragmentsIds))
+        .where(and(
+          eq(workoutSessionLogFragment.workoutSessionLogId, input.sessionLogId),
+          isNull(workoutSessionLogFragment.endedAt)
+        ))
 
       await ctx.db.update(workoutSessionLog).set({
-        ...input.log,
         endedAt: new Date()
-      }).where(eq(workoutSessionLog.id, input.log.id))
+      }).where(eq(workoutSessionLog.id, input.sessionLogId))
     }),
 
-  addWorkoutSessionLogFragment: protectedProcedure
+  startWorkoutSessionLogFragment: protectedProcedure
     .input(z.object({
-      fragment: CreateWorkoutSessionLogFragmentZod,
+      fragmentId: z.string(),
       sessionId: z.string()
     }))
     .mutation(async ({ ctx, input }) => {
       await validateWorkoutSession(ctx, input.sessionId)
 
-      await ctx.db.insert(workoutSessionLogFragment).values(input.fragment)
+      await ctx.db.update(workoutSessionLogFragment).set({
+        startedAt: new Date(),
+        endedAt: null
+      }).where(eq(workoutSessionLogFragment.id, input.fragmentId))
     }),
 
   endWorkoutSessionLogFragment: protectedProcedure
@@ -726,41 +864,84 @@ export const workoutRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await validateWorkoutSession(ctx, input.sessionId)
 
+      const fragment = await ctx.db.query.workoutSessionLogFragment.findFirst({
+        where: eq(workoutSessionLogFragment.id, input.fragment.id)
+      })
+
+      if (!fragment) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This fragment does not exist."
+        })
+      }
+
+      if (fragment?.startedAt === null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You can't end a fragment that has not been started."
+        })
+      }
+
       await ctx.db.update(workoutSessionLogFragment).set({
         ...input.fragment,
         endedAt: new Date()
       }).where(eq(workoutSessionLogFragment.id, input.fragment.id))
     }),
 
-  endWorkoutSessions: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      const userId = ctx.session.user.id
+  endWorkoutSession: protectedProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const userId = getCtxUserId(ctx)
+      const sessionId = input
 
-      if (!userId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Not authorized to fetch this resource"
-        })
-      }
+      await validateWorkoutSession(ctx, sessionId)
 
-      const activeSessions = await ctx.db.query.workoutSession.findMany({
-        where: and(eq(workoutSession.userId, userId), isNull(workoutSession.endedAt)),
+      const session = await ctx.db.query.workoutSession.findFirst({
+        where: and(
+          eq(workoutSession.userId, userId),
+          eq(workoutSession.id, sessionId),
+          isNull(workoutSession.endedAt),
+        ),
         with: {
-          workoutSessionLogs: true,
+          workoutSessionLogs: {
+            with: {
+              workoutSessionLogFragments: true
+            }
+          },
         }
       })
 
-      const toBeDeleted = activeSessions.filter(session => session.workoutSessionLogs.length === 0)
-      const toBeEnded = activeSessions.filter(session => !toBeDeleted.some(s => s.id === session.id))
+      if (!session) return null
 
-      for (const session of toBeDeleted) {
-        await ctx.db.delete(workoutSession).where(eq(workoutSession.id, session.id))
+      await ctx.db.update(workoutSession).set({ endedAt: new Date() }).where(eq(workoutSession.id, session.id))
+    
+      for (const sessionLog of session.workoutSessionLogs) {
+        await ctx.db.update(workoutSessionLog).set({ endedAt: new Date() }).where(
+          and(
+            eq(workoutSessionLog.id, sessionLog.id),
+            isNull(workoutSessionLog.endedAt)
+          )
+        )
+
+        for (const sessionLogFragment of sessionLog.workoutSessionLogFragments) {
+          await ctx.db.update(workoutSessionLogFragment).set({ endedAt: new Date() }).where(
+            and(
+              eq(workoutSessionLogFragment.id, sessionLogFragment.id),
+              isNull(workoutSessionLogFragment.endedAt)
+            )
+          )
+        }
       }
 
-      for (const session of toBeEnded) {
-        await ctx.db.update(workoutSession).set({ endedAt: new Date() }).where(eq(workoutSession.id, session.id))
-      }
+      emitServerSocketEvent({
+        event: WorkoutEvent.ENDED_WORKOUT,
+        recipients: await getUserFriendsIds(ctx),
+        payload: {
+          sentAt: new Date(),
+          userId: userId
+        }
+      })
 
-      return toBeEnded.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime()).at(0)?.id
+      return session.id
     })
 });

@@ -19,7 +19,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -29,14 +28,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { signOut, useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
 import { Skeleton } from "../skeleton"
 import Link from "next/link"
+import { api } from "@/trpc/react"
+import { useRouter } from "next/navigation"
 
 export function NavUser() {
-  const session = useSession()
-  const user = session.data?.user
+  const { data: user } = api.user.getMe.useQuery()
   const { isMobile } = useSidebar()
+  const router = useRouter()
 
   return (
     <SidebarMenu>
@@ -49,7 +50,7 @@ export function NavUser() {
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.image ?? ''} alt={user?.name ?? ''} />
+                  <AvatarImage src={user.uploadedImage ?? user.image ?? ''} alt={user?.name ?? ''} />
                   <AvatarFallback className="rounded-lg">{user.username?.at(0)}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -63,12 +64,15 @@ export function NavUser() {
               className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
               side={isMobile ? "bottom" : "right"}
               align="end"
-              sideOffset={4}
+              sideOffset={12}
             >
-              <DropdownMenuLabel className="p-0 font-normal">
+              <DropdownMenuItem
+                className="p-0 font-normal"
+                onClick={() => router.push("/user/profile/@me")}
+              >
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user?.image ?? ''} alt={user.name ?? ''} />
+                    <AvatarImage src={user.uploadedImage ?? user?.image ?? ''} alt={user.name ?? ''} />
                     <AvatarFallback className="rounded-lg">{user.username?.at(0)}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -76,7 +80,7 @@ export function NavUser() {
                     <span className="truncate text-xs">{user.email}</span>
                   </div>
                 </div>
-              </DropdownMenuLabel>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>

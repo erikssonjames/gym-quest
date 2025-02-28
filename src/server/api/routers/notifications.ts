@@ -3,8 +3,9 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { notification } from "@/server/db/schema/notifications";
+import { getCtxUserId } from "@/server/utils/user";
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 export const notificationsRouter = createTRPCRouter({
@@ -133,12 +134,22 @@ export const notificationsRouter = createTRPCRouter({
 
       await ctx.db.update(notification).set({ readAt: new Date() }).where(
         and(
-          and(
-            inArray(notification.id, notificationIds),
-            eq(notification.userId, userId)
-          ),
+          inArray(notification.id, notificationIds),
+          eq(notification.userId, userId),
           isNull(notification.readAt)
         )
       )
     }),
+
+  hideReadNotifications: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const userId = getCtxUserId(ctx)
+      await ctx.db.update(notification).set({
+        hidden: true
+      }).where(and(
+        eq(notification.userId, userId),
+        eq(notification.hidden, false),
+        isNotNull(notification.readAt)
+      ))
+    })
 });

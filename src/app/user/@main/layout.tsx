@@ -5,7 +5,6 @@ import { UserSettingsProvider } from "./_components/user-settings-provider";
 import { STANDARD_BORDER_RADIUS, STANDARD_COLOR_THEME } from "@/variables/settings";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/ui/sidebar/app-sidebar";
-import DynamicLayout from "./_components/dynamic-layout";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   await redirectIfNoSession()
@@ -21,13 +20,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         <AppSidebar />
         <SidebarInset>
           <Navbar />
-          <DynamicLayout>
-            <div className="min-h-full h-full">
-              <div className="min-h-full h-full flex flex-col max-w-6xl mx-auto px-4 md:px-10">
-                {children}
-              </div>
-            </div>
-          </DynamicLayout>
+          {children}
         </SidebarInset>
       </SidebarProvider>
     </UserSettingsProvider>

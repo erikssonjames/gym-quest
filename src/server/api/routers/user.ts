@@ -32,6 +32,7 @@ import { createAddedFriendRequestNotification, createNewFriendRequestNotificatio
 import { UserEvents } from "@/socket/enums/user";
 import { emitServerSocketEvent } from "@/server/socket";
 import { UserNotifications } from "@/socket/enums/notifications";
+import { v2 as cloudinary, type UploadApiResponse, type UploadApiOptions } from "cloudinary"
 
 type UserDetails = { email: string, password: string }
 
@@ -113,6 +114,20 @@ const generateSecureCode = () => {
   return code
 }
 
+function uploadBufferToCloudinary(
+  buffer: Buffer, 
+  options?: UploadApiOptions
+): Promise<UploadApiResponse | undefined> {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) {
+        return reject(error);
+      }
+      resolve(result);
+    }).end(buffer);
+  });
+}
+
 export const userRouter = createTRPCRouter({
   createUser: protectedProcedure
     .input(z.object({
@@ -167,6 +182,14 @@ export const userRouter = createTRPCRouter({
       return user
     }),
 
+  getUserById: protectedProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.query.users.findFirst({
+        where: eq(users.id, input)
+      })
+    }),
+
   getUsers: protectedProcedure
     .query(async ({ ctx }) => {
       const myUserId = ctx.session.user.id
@@ -184,6 +207,75 @@ export const userRouter = createTRPCRouter({
           isNotNull(users.username)
         ),
       })
+    }),
+
+  uploadProfilePicture: protectedProcedure
+    .input(
+      z.object({
+        image: z.object({
+          name: z.string(),
+          type: z.string(),
+          base64: z.string(),
+        }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      if (!userId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Incorrect session.'
+        })
+      }
+
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.id, userId)
+      })
+
+      if (!user) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong fetching your data. Try again later!"
+        })
+      }
+
+      const uploadedImage = user.uploadedImage
+
+      if (uploadedImage) {
+        await cloudinary.uploader.destroy(uploadedImage,
+          (res) => console.log("Res from destroy: ", res)
+        )
+      }
+
+      const { base64, name } = input.image
+
+      // 1) Strip off the data URL prefix if needed
+      const rawBase64 = base64.replace(/^data:\w+\/\w+;base64,/, "")
+
+      // 2) Convert base64 -> Buffer
+      const fileBuffer = Buffer.from(rawBase64, "base64")
+
+      // 3) Upload to Cloudinary via our helper
+      // Pass any upload options you want, for example:
+      const result = await uploadBufferToCloudinary(fileBuffer, {
+        resource_type: "image",
+        folder: userId,         // store in a folder named after the user? up to you
+        public_id: name,        // optionally use the original file name as public_id
+        // You can also pass 'transformation', 'format', etc.
+        allowed_formats: ["jpg", "png", "webp"],
+        transformation: { width: 400, height: 400, crop: "limit" }
+      })
+
+      if (!result?.url) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Upload failed" })
+      }
+
+      // 4) Save that URL in your database
+      await ctx.db.update(users)
+        .set({ uploadedImage: result.url })
+        .where(eq(users.id, userId))
+
+      return result.url
     }),
 
   updateUserSettings: protectedProcedure

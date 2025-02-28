@@ -1,14 +1,13 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuPortal, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { type Notification } from "@/server/db/schema/notifications";
-import { type User } from "@/server/db/schema/user";
 import { EllipsisVertical, Eye, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 
 interface UserHeaderProps {
-  user: User
+  userId: string
   notificationId: Notification["id"]
   isRead: boolean
   createdAt: Date
@@ -16,8 +15,10 @@ interface UserHeaderProps {
 }
 
 
-export default function UserHeader ({ user, notificationId, isRead, createdAt, text }: UserHeaderProps) {
+export default function UserHeader ({ userId, notificationId, isRead, createdAt, text }: UserHeaderProps) {
   const utils = api.useUtils()
+
+  const { data: user } = api.user.getUserById.useQuery(userId)
 
   const { 
     mutate: markNotificationAsRead, isPending: markNotificationAsReadPending 
@@ -34,11 +35,11 @@ export default function UserHeader ({ user, notificationId, isRead, createdAt, t
     <div className="flex justify-between relative pe-8 group ps-4">
       <div className="flex gap-3 flex-grow">
         <Avatar className="size-7 text-sm">
-          <AvatarImage src={user.image ?? ""} />
-          <AvatarFallback>{user.username?.at(0) ?? "~"}</AvatarFallback>
+          <AvatarImage src={user?.uploadedImage ?? user?.image ?? ""} />
+          <AvatarFallback>{user?.username?.at(0) ?? "~"}</AvatarFallback>
         </Avatar>
         <div className="flex-grow">
-          <p className="text-sm"><span className="font-semibold">{user.username}</span> {text}</p>
+          <p className="text-sm"><span className="font-semibold">{user?.username}</span> {text}</p>
           <div className="text-xs text-muted-foreground flex justify-between">
             <p>{format(createdAt, "cccc, k:mm")}</p>
             <p>{formatDistanceToNowStrict(createdAt)} ago</p>

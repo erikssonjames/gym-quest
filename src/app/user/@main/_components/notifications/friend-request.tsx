@@ -5,12 +5,13 @@ import UserHeader from "./user-header";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { useSession } from "next-auth/react";
+import { memo } from "react";
 
 interface FriendRequestProps {
   notification: NotificationsOutput[number]
 }
 
-export default function FriendRequest ({ notification }: FriendRequestProps) {
+function FriendRequest ({ notification }: FriendRequestProps) {
   const utils = api.useUtils()
   const session = useSession()
   const { mutate: markNotificationAsRead } = api.notification.markNotificationAsRead.useMutation()
@@ -33,8 +34,10 @@ export default function FriendRequest ({ notification }: FriendRequestProps) {
   const { friendRequest, createdAt, hidden, readAt, id } = notification
 
   if (hidden) return null
-
+  
+  const myUserId = notification.userId
   const fromUser = friendRequest.friendRequest.fromUser
+  const toUserId = friendRequest.friendRequest.toUserId
   const accepted = friendRequest.friendRequest.accepted
   const ignored = friendRequest.friendRequest.ignored
 
@@ -55,13 +58,12 @@ export default function FriendRequest ({ notification }: FriendRequestProps) {
       )}
     >
       <UserHeader 
-        user={fromUser} 
+        userId={myUserId === fromUser.id ? toUserId : fromUser.id} 
         notificationId={id} 
         isRead={readAt !== null} 
         createdAt={createdAt}
         text={text}
       />
-
 
       {!accepted && !ignored && (
         <div className="flex gap-2 ps-14">
@@ -94,7 +96,7 @@ export default function FriendRequest ({ notification }: FriendRequestProps) {
       )}
 
       {accepted && (
-        <div className="flex items-center gap-1 text-xs font-bold rounded-md w-fit ms-14">
+        <div className="flex items-center gap-1 text-xs font-bold rounded-md w-fit ms-14 bg-green-600/70 px-2 py-1">
           <p>Accepted friend request!</p>
           <CheckCircle size={13} />
         </div>
@@ -109,3 +111,5 @@ export default function FriendRequest ({ notification }: FriendRequestProps) {
     </div>
   )
 }
+
+export default memo(FriendRequest)

@@ -20,10 +20,11 @@ import {
 } from "@/components/ui/sidebar"
 import { NavMain } from "./nav-main"
 import { NavUser } from "./nav-user"
-import { LogoHeader } from "./team-switcher"
+import { Header } from "./header"
 import { NavGeneral } from "./nav-general"
 import { usePathname } from "next/navigation"
 import { NavAdmin } from "./nav-admin"
+import ActiveUsers from "./active-users"
 
 export type SidebarItem = {
   title: string;
@@ -47,7 +48,7 @@ export const sidebarData: SidebarData = {
       icon: Dumbbell,
       items: [
         { title: "Overview", url: "/user/workouts" },
-        { title: "History", url: "/user/workouts/history" },
+        { title: "History", url: "/user/workouts/history", disabled: true },
         { title: "Manage", url: "/user/workouts/manage" },
         { title: "Active Workout", url: "/user/workouts/active" },
       ],
@@ -109,7 +110,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props} className="bg-background">
       <SidebarHeader>
-        <LogoHeader />
+        <Header />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={sidebarData.navMain} isActive={isUrlActive} isPartiallyActive={isUrlPartiallyActive} />
@@ -117,6 +118,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavAdmin adminItem={sidebarData.navAdmin} isActive={isUrlPartiallyActive} />
       </SidebarContent>
       <SidebarFooter>
+        <ActiveUsers />
         <NavUser  />
       </SidebarFooter>
       <SidebarRail />

@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { api } from "@/trpc/react"
 import { type SidebarItem } from "./app-sidebar"
-import { useDisplayTimer } from "@/hooks/useDisplayTimer"
+import { useDisplayTimer } from "@/hooks/use-display-timer"
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from "../tooltip"
 
 export function NavMain({
@@ -70,13 +70,20 @@ export function NavMain({
                     subItem.title === "Active Workout" ? (
                       <ActiveWorkoutItem key={subItem.title} subItem={subItem} isActive={isActive} />
                     ) : (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild isActive={isActive(subItem.url)}>
-                          <Link href={subItem.url}>
-                            <span>{subItem.title}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
+                      subItem.disabled ? (
+                        null
+                      ) : (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton 
+                            asChild 
+                            isActive={isActive(subItem.url)}
+                          >
+                            <Link href={subItem.url}>
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )
                     )
                   ))}
                 </SidebarMenuSub>

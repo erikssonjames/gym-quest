@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import Notifications from "./notifications";
+import SendFeedback from "./send-feedback";
 
 const ITEMS_TO_DISPLAY = 3
 
@@ -36,11 +37,11 @@ export default function Navbar () {
   }, [pathName])
 
   return (
-    <header className="flex w-full h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 absolute top-0 bg-background/50 backdrop-blur-sm z-30">
+    <header className="flex w-full h-16 shrink-0 items-center border-b justify-between gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 absolute top-0 bg-background/50 backdrop-blur-sm z-30">
       <div className="flex items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <Breadcrumb className="hidden md:block">
+        <Breadcrumb className="hidden">
           <BreadcrumbList>
             <BreadcrumbItem>
               {breadcrumbArr.length === 0 ? (
@@ -134,8 +135,11 @@ export default function Navbar () {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-
-      <Notifications />
+      
+      <div className="flex gap-2 items-center">
+        <SendFeedback />
+        <Notifications />
+      </div>
     </header>
   )
 }

@@ -183,6 +183,27 @@
       "when": 1739713359749,
       "tag": "0025_magenta_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1740122847736,
+      "tag": "0026_giant_lethal_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1740330725810,
+      "tag": "0027_fresh_darkhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1740768415044,
+      "tag": "0028_yielding_wendigo",
+      "breakpoints": true
     }
   ]
 }

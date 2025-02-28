@@ -32,6 +32,7 @@ export const users = pgTable("user", {
     withTimezone: true,
   }).defaultNow(),
   image: varchar("image", { length: 255 }),
+  uploadedImage: varchar("uploadedImage", { length: 255 })
 });
 
 export const accounts = pgTable(

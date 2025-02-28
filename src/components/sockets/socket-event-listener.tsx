@@ -6,6 +6,8 @@ import { useEffect, useRef } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useNotificationSocketEventHandlers } from "./event-handlers/notifications";
 import { useUserSocketEventHandlers } from "./event-handlers/user";
+import { useWorkoutSocketEventHandlers } from "./event-handlers/workout";
+import { WorkoutSocketEventPayloads } from "@/socket/types/workout";
 
 export default function SocketEventListener() {
   const { data: sessionData } = useSession();
@@ -15,6 +17,7 @@ export default function SocketEventListener() {
   const { userNotificationFunctionsMap, workoutNotificationFunctionsMap } =
     useNotificationSocketEventHandlers();
   const { userFunctionsMap } = useUserSocketEventHandlers();
+  const { workoutFunctionsMap } = useWorkoutSocketEventHandlers()
 
   const socketRef = useRef<Socket>();
 
@@ -35,16 +38,20 @@ export default function SocketEventListener() {
       console.log("Connected to socket");
     };
 
-    const handleAny = (event: keyof SocketEventPayloads, args: unknown) => {
-      console.log(`Received ${event}, args: ${JSON.stringify(args)}`);
-
+    const handleAny = <E extends keyof SocketEventPayloads>(
+      event: E, 
+      args: SocketEventPayloads[E]
+    ) => {
       if (event in userNotificationFunctionsMap) {
         void userNotificationFunctionsMap[event as keyof typeof userNotificationFunctionsMap]?.();
       } else if (event in workoutNotificationFunctionsMap) {
         void workoutNotificationFunctionsMap[event as keyof typeof workoutNotificationFunctionsMap]?.();
       } else if (event in userFunctionsMap) {
         void userFunctionsMap[event as keyof typeof userFunctionsMap]?.();
-      }
+      } else if (event in workoutFunctionsMap) {
+        const workoutEvent = event as keyof WorkoutSocketEventPayloads
+        const data = args as WorkoutSocketEventPayloads[typeof workoutEvent]
+        void (workoutFunctionsMap[workoutEvent] as (data: WorkoutSocketEventPayloads[typeof workoutEvent]) => void)(data);      }
     };
 
     // Register event listeners

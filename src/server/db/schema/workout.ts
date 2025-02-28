@@ -76,36 +76,33 @@ export const workoutSession = pgTable("workoutSession", {
     .references(() => workout.id, { onDelete: "set null" })
     .notNull(),
   startedAt: timestamp("startedAt").defaultNow().notNull(),
-  endedAt: timestamp("endedAt"),
-  useLastRecordedValue: boolean("useLastRecordedValue").notNull()
+  endedAt: timestamp("endedAt")
 })
 
 export const workoutSessionLog = pgTable("workoutSessionLog", {
   id: uuid("id").defaultRandom().primaryKey(),
+  order: integer("order").notNull(),
   workoutSessionId: uuid("workoutSessionId")
     .references(() => workoutSession.id, { onDelete: "cascade" })
     .notNull(),
   exerciseId: uuid("exerciseId")
     .references(() => exercise.id, { onDelete: "set null" })
     .notNull(),
-  workoutSetCollectionId: uuid("workoutSetCollectionId")
-    .references(() => workoutSetCollection.id, { onDelete: "set null" })
-    .notNull(),
-  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  startedAt: timestamp("startedAt"),
   endedAt: timestamp("endedAt")
 });
 
 export const workoutSessionLogFragment = pgTable("workoutSessionLogFragment", {
   id: uuid("id").defaultRandom().primaryKey(),
+  order: integer("order").notNull(),
   workoutSessionLogId: uuid("workoutSessionLogId")
     .references(() => workoutSessionLog.id, { onDelete: "cascade" })
     .notNull(),
-  reps: integer("reps"),
-  weight: integer("weight"),
-  duration: integer("duration"),
-  startedAt: timestamp("startedAt").notNull(),
-  endedAt: timestamp("endedAt"),
-  skipped: boolean("skipped")
+  reps: integer("reps").notNull(),
+  weight: integer("weight").notNull(),
+  duration: integer("duration").notNull(),
+  startedAt: timestamp("startedAt"),
+  endedAt: timestamp("endedAt")
 })
 
 // General types
