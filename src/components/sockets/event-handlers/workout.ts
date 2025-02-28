@@ -25,6 +25,9 @@ export function useWorkoutSocketEventHandlers() {
     },
     [WorkoutEvent.ENDED_WORKOUT]: () => {
       void utils.workout.getFriendsActiveWorkoutSessions.invalidate()
+    },
+    [WorkoutEvent.REACTED_TO_FRIEND_WORKOUT]: (data) => {
+      console.log(`User: ${data.userId} reacted to your active workout, with emoji ${data.emoji}`)
     }
   };
 
