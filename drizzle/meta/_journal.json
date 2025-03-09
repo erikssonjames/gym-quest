@@ -204,6 +204,13 @@
       "when": 1740768415044,
       "tag": "0028_yielding_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1741522447794,
+      "tag": "0029_new_menace",
+      "breakpoints": true
     }
   ]
 }

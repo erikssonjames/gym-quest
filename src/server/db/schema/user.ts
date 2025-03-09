@@ -15,6 +15,7 @@ import {
   uuid,
   boolean,
   uniqueIndex,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import { sql } from 'drizzle-orm';
@@ -34,6 +35,15 @@ export const users = pgTable("user", {
   image: varchar("image", { length: 255 }),
   uploadedImage: varchar("uploadedImage", { length: 255 })
 });
+
+export const userRoleEnum = pgEnum("userRole", ["admin", "user"])
+export const userPrivateInformation = pgTable("userPrivateInformation", {
+  userId: uuid("userId")
+    .references(() => users.id, { onDelete: "cascade" })
+    .primaryKey(),
+  password: varchar("password"),
+  role: userRoleEnum("role").default("user").notNull()
+})
 
 export const accounts = pgTable(
   "account",

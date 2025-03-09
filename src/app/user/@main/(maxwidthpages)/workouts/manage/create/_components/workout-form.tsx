@@ -52,7 +52,7 @@ export default function CreateWorkoutForm() {
       // Handle success
       saveStoredForm(null)
       void utils.workout.invalidate()
-      toast.success("Workout succesfully created!")
+      toast.success("Workout successfully created!")
       const returnFn = searchParamsFunctions.get(SearchParam.RETURN_URL)
       if (returnFn) {
         returnFn()

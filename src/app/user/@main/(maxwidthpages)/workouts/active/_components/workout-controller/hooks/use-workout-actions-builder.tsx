@@ -28,7 +28,8 @@ export interface ActionData {
     exercise: Exercise,
     numberOfSets: number,
     setsCompleted: number,
-    sessionLogId: string
+    sessionLogId: string,
+    previousData?: Session["previousData"][string]
   }
   end_workout: { sessionId: string }
 }
@@ -87,7 +88,8 @@ export function useWorkoutActionsBuilder () {
                 exercise: log.exercise,
                 setsCompleted: i + 1,
                 numberOfSets: numSets,
-                sessionLogId: log.id
+                sessionLogId: log.id,
+                previousData: activeWorkoutSession.previousData[log.exerciseId]
               }
             })
           }

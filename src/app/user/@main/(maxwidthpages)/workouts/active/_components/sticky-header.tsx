@@ -20,7 +20,7 @@ export default function StickyHeader () {
           </div>
         </div>
       ) : (
-        <div className="flex justify-between items-center px-4">
+        <div className="flex justify-between items-center">
           <div className="flex flex-col justify-center">
             <div className="rounded-md">
               <p className="text-sm">{elapsedTime}</p>

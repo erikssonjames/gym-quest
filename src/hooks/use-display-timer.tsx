@@ -28,3 +28,35 @@ export function useDisplayTimer(startDate?: Date | string | number) {
 
   return elapsedTime;
 }
+
+export function useDisplayTimerInSeconds(
+  startDate?: Date | string | number,
+  initialSeconds = 0,
+  paused = false
+) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(initialSeconds);
+
+  useEffect(() => {
+    if (paused) return
+
+    // Convert startDate to a timestamp if provided; otherwise use "now."
+    const startTimestamp = startDate
+      ? new Date(startDate).getTime()
+      : Date.now();
+
+    function updateTimer() {
+      // Time since start, in seconds
+      const diff = Math.floor((Date.now() - startTimestamp) / 1000);
+      // Include the initial offset
+      setElapsedSeconds(diff + initialSeconds);
+    }
+
+    // Run immediately, then every second
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [startDate, initialSeconds, paused]);
+
+  return elapsedSeconds;
+}

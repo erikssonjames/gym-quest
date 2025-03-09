@@ -51,12 +51,12 @@ function CreateSetCollectionsForm({ setCollectionsIndex, setIndex, remove, numCo
             name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.exerciseId`}
             render={({field}) => (
               <div className="md:space-y-2 w-full md:w-fit md:min-w-60">
-                <p className="text-xs text-muted-foreground ps-3">Exercise</p>
+                <p className="text-xs text-muted-foreground">Exercise</p>
 
                 <SelectExercise
                   onSelectExercise={(id) => field.onChange(id)} // Sync with react-hook-form
                   button={({ onClick }) => (
-                    <Button onClick={onClick} type="button" variant="ghost" className="text-xl">
+                    <Button onClick={onClick} type="button" variant="ghost" className="text-xl ps-0">
                       {getExerciseName(field.value)}
                       <ChevronDown />
                     </Button>

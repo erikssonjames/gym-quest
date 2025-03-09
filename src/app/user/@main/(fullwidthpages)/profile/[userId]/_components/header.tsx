@@ -116,7 +116,7 @@ function UserProfilePicture () {
               <ImagePlus size={40} className="text-muted-foreground" />
             </button>
           ) : (
-            <CropImage file={selectedFile} close={onClose} />
+            <CropImage file={selectedFile} close={onClose} userId={userId} />
           )}
           
           <Input 
@@ -132,12 +132,16 @@ function UserProfilePicture () {
   )
 }
 
-const CropImage = memo(({ file, close }: { file: File, close: () => void }) => {
+const CropImage = memo((
+  { file, close, userId }: 
+  { file: File, close: () => void, userId: string }
+) => {
   const utils = api.useUtils()
   const { mutate, isPending } = api.user.uploadProfilePicture.useMutation({
     onSuccess: () => {
-      close()
+      void utils.user.getUserById.invalidate(userId)
       void utils.user.getMe.invalidate()
+      close()
     }
   })
 

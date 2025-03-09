@@ -40,9 +40,11 @@ export default function CreateExerciseForm() {
   const router = useRouter()
   const [storedForm, saveStoredForm] = useLocalStorage<Partial<CreateExercise>>("createExerciseForm", null)
 
+  const utils = api.useUtils()
   const { data: muscles } = api.body.getMuscles.useQuery()
   const { mutateAsync, isPending } = api.exercise.createExercise.useMutation({
     onSuccess: () => {
+      void utils.exercise.getExercises.invalidate()
       toast.success('Exercise created!')
       form.reset()
       const redirectFn = searchParamsFunctions.get(SearchParam.RETURN_URL)

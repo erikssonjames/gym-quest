@@ -1,7 +1,6 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { skipToken } from "@tanstack/react-query"
 import { api } from "@/trpc/react"
 import {
   Dialog,
@@ -17,12 +16,9 @@ import { Input } from "@/components/ui/input"
 import { memo, useCallback, useMemo, useRef, useState } from "react"
 import Cropper, { type Area, type Point } from 'react-easy-crop'
 import { Slider } from "@/components/ui/slider"
-import { useSession } from "next-auth/react"
 
 export default function UserProfile () {
-  const session = useSession()
-  const userId = session.data?.user.id
-  const { data: user } = api.user.getUserById.useQuery(userId ? userId : skipToken)
+  const { data: user } = api.user.getMe.useQuery()
   
   return (
     <div className="w-full rounded-3xl overflow-hidden shadow-sm border">
@@ -46,9 +42,7 @@ export default function UserProfile () {
 }
 
 function UserProfilePicture () {
-  const session = useSession()
-  const userId = session.data?.user.id
-  const { data: user } = api.user.getUserById.useQuery(userId ? userId : skipToken)
+  const { data: user } = api.user.getMe.useQuery()
 
   const [open, setOpen] = useState(false)
 

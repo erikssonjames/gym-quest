@@ -144,15 +144,15 @@ export const userRouter = createTRPCRouter({
       }
             
       const { username } = input
-      await ctx.db.transaction(async (transcation) => {
-        await transcation
+      await ctx.db.transaction(async (tx) => {
+        await tx
           .update(users)
           .set({ username })
           .where(eq(users.id, userId))
 
         const newUserSettings: NewUserSettings = { userId }
                 
-        await transcation
+        await tx
           .insert(userSettings)
           .values(newUserSettings)
       })
@@ -171,6 +171,9 @@ export const userRouter = createTRPCRouter({
         where: eq(users.id, userId),
         with: {
           userSettings: true
+        },
+        columns: {
+          password: false
         }
       })
 
@@ -186,7 +189,10 @@ export const userRouter = createTRPCRouter({
     .input(z.string())
     .query(async ({ ctx, input }) => {
       return await ctx.db.query.users.findFirst({
-        where: eq(users.id, input)
+        where: eq(users.id, input),
+        columns: {
+          password: false
+        }
       })
     }),
 
@@ -206,6 +212,9 @@ export const userRouter = createTRPCRouter({
           ne(users.id, myUserId),
           isNotNull(users.username)
         ),
+        columns: {
+          password: false,
+        }
       })
     }),
 
@@ -490,16 +499,24 @@ export const userRouter = createTRPCRouter({
           eq(friendShip.userTwo, userId),
         ),
         with: {
-          userOneUser: true,
-          userTwoUser: true
-        }
+          userOneUser: {
+            columns: {
+              password: false,
+            }
+          },
+          userTwoUser: {
+            columns: {
+              password: false,
+            }
+          }
+        },
       })
 
       return friendShips.map(friendShip => {
         const friend = friendShip.userOneUser.id === userId
           ? friendShip.userTwoUser
           : friendShip.userOneUser
-
+        
         return {
           createdAt: friendShip.createdAt,
           ...friend
@@ -528,8 +545,16 @@ export const userRouter = createTRPCRouter({
           eq(friendRequest.ignored, false)
         ),
         with: {
-          fromUser: true,
-          toUser: true
+          fromUser: {
+            columns: {
+              password: false
+            }
+          },
+          toUser: {
+            columns: {
+              password: false
+            }
+          }
         }
       })
 
@@ -551,17 +576,12 @@ export const userRouter = createTRPCRouter({
       const myUserId = ctx.session.user.id
       const toUserId = input
 
-      let num = 0
-      console.log(++num)
-
       if (!myUserId || !toUserId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Missing data in the request."
         })
       }
-
-      console.log(++num)
 
       const existingPendingRequest = await ctx.db.query.friendRequest.findFirst({
         where: and(
@@ -574,8 +594,6 @@ export const userRouter = createTRPCRouter({
         )
       })
 
-      console.log(++num)
-
       if (existingPendingRequest) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -583,14 +601,10 @@ export const userRouter = createTRPCRouter({
         })
       }
 
-      console.log(++num)
-
       const createdFriendRequest = (await ctx.db.insert(friendRequest).values({
         fromUserId: myUserId,
         toUserId: toUserId
       }).returning()).at(0)
-
-      console.log(++num)
 
       try {
         if (createdFriendRequest) {
@@ -599,8 +613,6 @@ export const userRouter = createTRPCRouter({
       } catch (e) {
         console.log(e)
       }
-
-      console.log(++num)
     }),
 
   acceptFriendRequest: protectedProcedure

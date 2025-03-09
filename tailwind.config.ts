@@ -107,13 +107,23 @@ const config = {
   					transform: 'rotate(215deg) translateX(-500px)',
   					opacity: '0'
   				}
-  			}
+  			},
+        'collapsible-slide-down': {
+          from: { height: '0' },
+          to:   { height: 'var(--radix-collapsible-content-height)' },
+        },
+        'collapsible-slide-up': {
+          from: { height: 'var(--radix-collapsible-content-height)' },
+          to:   { height: '0' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'meteor-effect': 'meteor 5s linear infinite',
         "caret-blink": "caret-blink 1.25s ease-out infinite",
+        'collapsible-slide-down': 'collapsible-slide-down 300ms ease-out',
+        'collapsible-slide-up': 'collapsible-slide-up 300ms ease-out',
   		}
   	}
   },

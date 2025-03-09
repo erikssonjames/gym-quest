@@ -24,7 +24,7 @@ export default function SelectExercise (
           button({ onClick: () => setOpen(true) })
         ) : (
           <Button type="button" onClick={() => setOpen(true)}>
-                Add exercise <Plus />
+            Add exercise <Plus />
           </Button>
         )}
       </PopoverTrigger>

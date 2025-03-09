@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm"
 import { muscle, muscleGroup } from "./body"
 import { exercise, exercisePublicRequest, exerciseToMuscle } from "./exercise"
-import { accounts, friendRequest, friendShip, sessions, users, userSettings } from "./user"
+import { accounts, friendRequest, friendShip, sessions, userPrivateInformation, users, userSettings } from "./user"
 import { workout, workoutReview, workoutSession, workoutSessionLog, workoutSessionLogFragment, workoutSet, workoutSetCollection, workoutToUser } from "./workout"
 import { friendRequestNotification, notification, workoutReviewNotification } from "./notifications"
 
@@ -14,7 +14,12 @@ export const userRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   userSettings: one(userSettings),
   friendsShip: many(friendShip),
-  friendRequests: many(friendRequest)
+  friendRequests: many(friendRequest),
+  userPrivateInformation: one(userPrivateInformation)
+}))
+
+export const userPrivateInformationRelations = relations(userPrivateInformation, ({ one }) => ({
+  user: one(users, { fields: [userPrivateInformation.userId], references: [users.id] })
 }))
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
