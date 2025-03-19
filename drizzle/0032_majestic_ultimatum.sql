@@ -1,0 +1,1 @@
+ALTER TABLE "badge" ADD COLUMN "test" text;

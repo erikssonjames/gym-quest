@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { memo, useCallback, useMemo, useRef, useState } from "react"
 import Cropper, { type Area, type Point } from 'react-easy-crop'
 import { Slider } from "@/components/ui/slider"
+import SelectBadge from "@/components/ui/badge/select-badge"
 
 export default function UserProfile () {
   const { data: user } = api.user.getMe.useQuery()
@@ -32,8 +33,9 @@ export default function UserProfile () {
           <div className="h-7" />
         </div>
         <div className="ml-2 mt-2 flex items-center justify-between">
-          <div>
+          <div className="flex gap-4 items-center">
             <p className="text-lg font-bold">{user?.username}</p>
+            <SelectBadge />
           </div>
         </div>
       </div>

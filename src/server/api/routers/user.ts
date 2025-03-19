@@ -15,7 +15,9 @@ import {
   verificationQueue, 
   waitlists, 
   friendShip, 
-  friendRequest 
+  friendRequest, 
+  userPrivateInformation,
+  userProfile
 } from "@/server/db/schema/user";
 import { and, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -33,6 +35,8 @@ import { UserEvents } from "@/socket/enums/user";
 import { emitServerSocketEvent } from "@/server/socket";
 import { UserNotifications } from "@/socket/enums/notifications";
 import { v2 as cloudinary, type UploadApiResponse, type UploadApiOptions } from "cloudinary"
+import type { BadgeLiteral } from "@/variables/badges";
+import { badgeProgress } from "@/server/db/schema/badges";
 
 type UserDetails = { email: string, password: string }
 
@@ -55,7 +59,7 @@ const createUserAccount = async ({
 
   const transactionResponse: string | TRPCError = await ctx.db.transaction(async (transaction) => {
     try {
-      const newUser: NewUser = { email, password };
+      const newUser: NewUser = { email };
 
       const createdUser = await transaction
         .insert(users)
@@ -84,6 +88,45 @@ const createUserAccount = async ({
           code: "BAD_REQUEST",
           message: "Something went wrong creating your user account."
         });
+      }
+
+      await transaction.insert(userPrivateInformation).values({
+        userId: createdUserId,
+        password,
+        role: "user"
+      })
+
+      await transaction.insert(userProfile).values({
+        userId: createdUserId
+      })
+
+      // Unlock badges for user based on number of users
+      const numUsers = await ctx.db.$count(users)
+      if (numUsers < 1000) {
+        const badges: BadgeLiteral[] = []
+        if (numUsers <= 10) {
+          badges.push({ id: "0-10th_user", weighting: 0 })
+        }
+        if (numUsers <= 50) {
+          badges.push({ id: "11-50th_user", weighting: 1 })
+        }
+        if (numUsers <= 100) {
+          badges.push({ id: "51-100th_user", weighting: 2 })
+        }
+        if (numUsers <= 500) {
+          badges.push({ id: "101-500th_user", weighting: 3 })
+        }
+        if (numUsers <= 1000) {
+          badges.push({ id: "501-1000th_user", weighting: 4 })
+        }
+
+        for (const badge of badges) {
+          await ctx.db.insert(badgeProgress).values({
+            badgeId: badge.id,
+            completed: true,
+            userId: createdUserId
+          })
+        }
       }
 
       return createdUserId;
@@ -170,10 +213,12 @@ export const userRouter = createTRPCRouter({
       const user = await ctx.db.query.users.findFirst({
         where: eq(users.id, userId),
         with: {
-          userSettings: true
-        },
-        columns: {
-          password: false
+          userSettings: true,
+          userProfile: {
+            with: {
+              badge: true
+            }
+          }
         }
       })
 
@@ -190,9 +235,6 @@ export const userRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await ctx.db.query.users.findFirst({
         where: eq(users.id, input),
-        columns: {
-          password: false
-        }
       })
     }),
 
@@ -212,9 +254,6 @@ export const userRouter = createTRPCRouter({
           ne(users.id, myUserId),
           isNotNull(users.username)
         ),
-        columns: {
-          password: false,
-        }
       })
     }),
 
@@ -499,16 +538,8 @@ export const userRouter = createTRPCRouter({
           eq(friendShip.userTwo, userId),
         ),
         with: {
-          userOneUser: {
-            columns: {
-              password: false,
-            }
-          },
-          userTwoUser: {
-            columns: {
-              password: false,
-            }
-          }
+          userOneUser: true,
+          userTwoUser: true
         },
       })
 
@@ -545,16 +576,8 @@ export const userRouter = createTRPCRouter({
           eq(friendRequest.ignored, false)
         ),
         with: {
-          fromUser: {
-            columns: {
-              password: false
-            }
-          },
-          toUser: {
-            columns: {
-              password: false
-            }
-          }
+          fromUser: true,
+          toUser: true
         }
       })
 

@@ -5,7 +5,7 @@ import type { Provider } from 'next-auth/providers'
 import { db } from './server/db'
 import { isPasswordValid } from '@/lib/hash'
 import { eq, or } from 'drizzle-orm'
-import { users } from './server/db/schema/user'
+import { type UserRole, users } from './server/db/schema/user'
 import { signInSchema } from './lib/zod'
 import { env } from './env'
 import { type PROVIDER, PROVIDERS_ARRAY } from './variables/auth'
@@ -36,17 +36,26 @@ export const providers: Provider[] = [
         where: or(
           eq(users.username, username ?? ''),
           eq(users.email, email ?? ''),
-        )
+        ),
+        with: {
+          userPrivateInformation: {
+            columns: {
+              password: true,
+            }
+          }
+        }
       })
 
       if (!user) return null
 
+      const storedPassword = user.userPrivateInformation?.password
+
       // User doesn't have credentials set up
-      if (!user.password) return null
+      if (!storedPassword) return null
 
       const validPassword = await isPasswordValid(
         password,
-        user.password
+        storedPassword
       )
 
       if (!validPassword) return null
@@ -71,12 +80,13 @@ export default {
 } satisfies NextAuthConfig
 
 declare module 'next-auth' {
-    interface Session {
-        user: {
-            username?: string,
-            provider: PROVIDER
-        } & DefaultSession['user']
-    } 
+  interface Session {
+    user: {
+      username?: string,
+      provider: PROVIDER,
+      role: UserRole
+    } & DefaultSession['user']
+  } 
 }
 
 export const providerMap: { id: PROVIDER, name: string }[] = providers.map((provider) => {

@@ -13,6 +13,8 @@ import { ZodError } from "zod";
 
 import { db } from "@/server/db";
 import { auth } from "@/auth";
+import { userPrivateInformation } from "../db/schema/user";
+import { eq } from "drizzle-orm";
 
 /**
  * 1. CONTEXT
@@ -110,3 +112,37 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 export const disabledProcedure = t.procedure.use(() => {
   throw new TRPCError({ code: "SERVICE_UNAVAILABLE" })
 })
+
+/**
+ * Admin (authenticated) procedure
+ *
+ * If you want a query or mutation to ONLY be accessible to admin users, use this. It verifies
+ * the user has the admin role.
+ *
+ * @see https://trpc.io/docs/procedures
+ */
+export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx?.session?.user.id) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const privateInformation = await ctx.db.query.userPrivateInformation.findFirst({
+    where: eq(userPrivateInformation.userId, ctx?.session?.user.id),
+    columns: {
+      role: true
+    }
+  })
+
+  const role = privateInformation?.role
+
+  if (!role || role !== "admin") {
+    throw new TRPCError({ code: "UNAUTHORIZED" })
+  }
+
+  return next({
+    ctx: {
+      // infers the `session` as non-nullable
+      session: { ...ctx.session, user: ctx.session.user },
+    },
+  });
+});

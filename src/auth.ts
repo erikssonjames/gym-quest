@@ -5,6 +5,7 @@ import authConfig from "./auth.config";
 import {
   accounts,
   sessions,
+  userPrivateInformation,
   users,
   verificationTokens,
 } from "@/server/db/schema/user";
@@ -41,19 +42,22 @@ export const { auth, handlers, signIn, signOut } = NextAuth(req => {
     session: { ...sessionConfig },
     adapter: drizzleAdapter,
     callbacks: {
-      // session: ({ session, user }) => ({
-      //   ...session,
-      //   user: {
-
-      //     ...session.user,
-      //     id: user.id
-      //   }
-      // }),
       session: async ({ user, session }) => {
         const result = await db.query.accounts.findFirst({
           where: eq(accounts.userId, user.id),
           columns: {
             provider: true
+          },
+          with: {
+            user: {
+              with: {
+                userPrivateInformation: {
+                  columns: {
+                    role: true
+                  }
+                }
+              }
+            }
           }
         })
 
@@ -62,7 +66,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth(req => {
           user: {
             ...session.user,
             id: user.id,
-            provider: result?.provider
+            provider: result?.provider,
+            role: result?.user.userPrivateInformation?.role
           }
         }
       },
@@ -118,6 +123,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth(req => {
         }
 
         return decode(params)
+      }
+    },
+    events: {
+      createUser: async (data) => {
+        const { id } = data.user
+        if (!id) return
+        await db.insert(userPrivateInformation).values({
+          userId: id,
+          role: "user"
+        })
       }
     },
     ...authConfig

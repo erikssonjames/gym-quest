@@ -1,9 +1,10 @@
 import { relations } from "drizzle-orm"
 import { muscle, muscleGroup } from "./body"
 import { exercise, exercisePublicRequest, exerciseToMuscle } from "./exercise"
-import { accounts, friendRequest, friendShip, sessions, userPrivateInformation, users, userSettings } from "./user"
+import { accounts, friendRequest, friendShip, sessions, userPrivateInformation, userProfile, users, userSettings } from "./user"
 import { workout, workoutReview, workoutSession, workoutSessionLog, workoutSessionLogFragment, workoutSet, workoutSetCollection, workoutToUser } from "./workout"
 import { friendRequestNotification, notification, workoutReviewNotification } from "./notifications"
+import { badge, badgeProgress, badgeProgressEvent } from "./badges"
 
 // User
 
@@ -15,11 +16,18 @@ export const userRelations = relations(users, ({ many, one }) => ({
   userSettings: one(userSettings),
   friendsShip: many(friendShip),
   friendRequests: many(friendRequest),
-  userPrivateInformation: one(userPrivateInformation)
+  userPrivateInformation: one(userPrivateInformation),
+  userProfile: one(userProfile),
+  badges: many(badgeProgress)
 }))
 
 export const userPrivateInformationRelations = relations(userPrivateInformation, ({ one }) => ({
   user: one(users, { fields: [userPrivateInformation.userId], references: [users.id] })
+}))
+
+export const userProfileRelations = relations(userProfile, ({ one }) => ({
+  user: one(users, { fields: [userProfile.userId], references: [users.id] }),
+  badge: one(badge, { fields: [userProfile.selectedBadge], references: [badge.id] })
 }))
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -54,6 +62,32 @@ export const friendRequestRelation = relations(friendRequest, ({ one }) => ({
     fields: [friendRequest.toUserId],
     references: [users.id],
   }),
+}))
+
+// Badge
+
+export const badgeRelations = relations(badge, ({ many }) => ({
+  badgeProgresses: many(badgeProgress),
+  userProfiles: many(userProfile)
+}))
+
+export const badgeProgressRelations = relations(badgeProgress, ({ one, many }) => ({
+  user: one(users, {
+    fields: [badgeProgress.userId],
+    references: [users.id]
+  }),
+  badge: one(badge, {
+    fields: [badgeProgress.badgeId],
+    references: [badge.id]
+  }),
+  progressEvents: many(badgeProgressEvent)
+}))
+
+export const badgeProgressEventRelations = relations(badgeProgressEvent, ({ one }) => ({
+  badgeProgress: one(badgeProgress, {
+    fields: [badgeProgressEvent.badgeProgressId],
+    references: [badgeProgress.id]
+  })
 }))
 
 // Exercise

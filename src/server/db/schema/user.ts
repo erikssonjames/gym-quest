@@ -19,6 +19,8 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import { sql } from 'drizzle-orm';
+import { z } from "zod";
+import { badge } from "./badges";
 
 type ExtraAdapterAccountType = AdapterAccountType | 'credentials'
 
@@ -26,7 +28,6 @@ export const users = pgTable("user", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }),
   username: varchar("username", { length: 20 }).unique(),
-  password: varchar("password"),
   email: varchar("email", { length: 255 }).notNull(),
   emailVerified: timestamp("email_verified", {
     mode: "date",
@@ -36,13 +37,21 @@ export const users = pgTable("user", {
   uploadedImage: varchar("uploadedImage", { length: 255 })
 });
 
-export const userRoleEnum = pgEnum("userRole", ["admin", "user"])
+export const userRoleEnum = pgEnum("userRole", ["superAdmin", "admin", "user"])
 export const userPrivateInformation = pgTable("userPrivateInformation", {
   userId: uuid("userId")
     .references(() => users.id, { onDelete: "cascade" })
     .primaryKey(),
   password: varchar("password"),
   role: userRoleEnum("role").default("user").notNull()
+})
+
+export const userProfile = pgTable("userProfile", {
+  userId: uuid("userId")
+    .references(() => users.id, { onDelete: "cascade" })
+    .primaryKey(),
+  selectedBadge: text("selectedBadge")
+    .references(() => badge.id, { onDelete: "set null" })
 })
 
 export const accounts = pgTable(
@@ -179,3 +188,6 @@ export type User = typeof users.$inferSelect
 export type NewAccount = typeof accounts.$inferInsert
 
 export type FriendRequest = typeof friendRequest.$inferSelect
+
+export const UserRoleZod = z.enum(userRoleEnum.enumValues)
+export type UserRole = z.infer<typeof UserRoleZod>

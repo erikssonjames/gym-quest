@@ -34,6 +34,7 @@ import { emitServerSocketEvent } from "@/server/socket";
 import { WorkoutEvent } from "@/socket/enums/workout";
 import { getCtxUserId } from "@/server/utils/user";
 import { type Exercise, exercise } from "@/server/db/schema/exercise";
+import { handleBadgeProgressFromWorkoutSession } from "../utils/badges";
 
 function sortWorkoutResponse (workouts: Array<FullWorkout>) {
   return workouts.map(w => {
@@ -1339,6 +1340,20 @@ export const workoutRouter = createTRPCRouter({
           userId: userId
         }
       })
+
+      const checkSessionIsValidForProgress = (session: unknown) => {
+        return true
+      }
+
+      if (checkSessionIsValidForProgress(session)) {
+        const progressedBadges = await handleBadgeProgressFromWorkoutSession(
+          ctx,
+          session
+        )
+
+        console.log(progressedBadges)
+      }
+
 
       return session.id
     })

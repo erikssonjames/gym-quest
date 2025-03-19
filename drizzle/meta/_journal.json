@@ -211,6 +211,62 @@
       "when": 1741522447794,
       "tag": "0029_new_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1741898371697,
+      "tag": "0030_remarkable_toxin",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1742032826845,
+      "tag": "0031_oval_war_machine",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1742034198184,
+      "tag": "0032_majestic_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1742034520853,
+      "tag": "0033_yielding_inertia",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1742134003524,
+      "tag": "0034_tired_mephisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1742150471617,
+      "tag": "0035_dear_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1742150621313,
+      "tag": "0036_third_slyde",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1742238002848,
+      "tag": "0037_silent_obadiah_stane",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ import { useUserId } from "../_hooks/useUserId"
 import { Slider } from "@/components/ui/slider"
 import { lightFormat } from "date-fns"
 import { useIsMyProfilePage } from "../_hooks/useIsMyProfilePage"
+import SelectBadge from "@/components/ui/badge/select-badge"
 
 export default function Header () {
   const isMyProfilePage = useIsMyProfilePage()
@@ -39,9 +40,12 @@ export default function Header () {
         </div>
         <div className="ml-5 mt-2 flex items-center justify-between">
           <div>
-            <p className="text-lg font-bold">{user?.username}</p>
+            <div className="flex gap-2 items-center">
+              <p className="text-lg font-bold">{user?.username}</p>
+              {isMyProfilePage && <SelectBadge />}
+            </div>
             {user?.emailVerified && (
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground text-xs mt-2">
                 Joined {lightFormat(user.emailVerified, "yyyy-MM-dd")}
               </p>
             )}

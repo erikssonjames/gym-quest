@@ -2,6 +2,8 @@ import next from "next";
 import { Server } from "socket.io";
 import { createServer } from "http"
 import { parse } from "url";
+import cron from "node-cron"
+import { updateBadgeStatisticsCronJob } from "./cron-jobs/update-badge-statistics"
 
 const dev = process.env.NODE_ENV !== "production";
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -37,6 +39,12 @@ declare global {
 }
 
 app.prepare().then(async () => {
+
+  // Cron Jobs
+  void updateBadgeStatisticsCronJob()
+  cron.schedule('*/15 * * * *', () => void updateBadgeStatisticsCronJob())
+
+  // Server
   const server = createServer((req, res) => {
     const parsedUrl = parse(req.url ?? '', true)
     void handler(req, res, parsedUrl)

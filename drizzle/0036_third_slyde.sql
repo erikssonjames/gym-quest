@@ -1,0 +1,1 @@
+ALTER TABLE "badge" ALTER COLUMN "percentageOfUsersHasBadge" SET DATA TYPE real;

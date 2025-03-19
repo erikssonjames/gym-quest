@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { type SidebarItem } from "./app-sidebar"
+import { useSession } from "next-auth/react"
 
 export function NavAdmin({
   adminItem,
@@ -17,6 +18,10 @@ export function NavAdmin({
   adminItem: SidebarItem[],
   isActive: (url: string) => boolean
 }) {
+  const session = useSession()
+
+  if (session.data?.user.role !== "admin") return null
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Admin stuff</SidebarGroupLabel>

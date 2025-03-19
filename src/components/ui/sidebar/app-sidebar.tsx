@@ -8,6 +8,7 @@ import {
   type LucideIcon,
   PersonStanding,
   Settings2,
+  Tag,
   Trophy,
 } from "lucide-react"
 
@@ -98,6 +99,11 @@ export const sidebarData: SidebarData = {
       url: "/user/muscles",
       icon: BicepsFlexed,
     },
+    {
+      title: "Badges",
+      url: "/user/badges",
+      icon: Tag
+    }
   ],
 };
 
