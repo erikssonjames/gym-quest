@@ -1,35 +1,32 @@
-"use client"
+"use client";
 
-import { H3 } from "@/components/typography/h3";
-import EndWorkoutButton from "./end-workout-button";
-import { api } from "@/trpc/react";
 import { useDisplayTimer } from "@/hooks/use-display-timer";
-import { useCheckIfScrolled } from "@/app/user/@main/_components/scroll-provider";
+import { api } from "@/trpc/react";
+import { Clock3 } from "lucide-react";
+import EndWorkoutButton from "./end-workout-button";
 
-export default function StickyHeader () {
-  const { data: activeSession } = api.workout.getActiveWorkoutSession.useQuery()
-  const elapsedTime = useDisplayTimer(activeSession?.startedAt)
-  const isScrolled = useCheckIfScrolled()
+export default function StickyHeader() {
+  const { data: activeSession } =
+    api.workout.getActiveWorkoutSession.useQuery();
+  const elapsedTime = useDisplayTimer(activeSession?.startedAt ?? undefined);
+  const timerText = activeSession?.startedAt ? elapsedTime : "Not started";
 
   return (
-    <div className="sticky top-0">
-      {isScrolled.isScrolled ? (
-        <div className="w-full flex justify-end pe-2 pt-2">
-          <div className="bg-background border px-2 py-1 rounded-md">
-            <p className="text-sm">Time: {elapsedTime}</p>
+    <header className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur md:-mx-10 md:px-10">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-base font-semibold">
+            {activeSession?.workout?.name ?? "Active workout"}
+          </p>
+          <div className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Clock3 className="size-3.5" />
+            <span className="tabular-nums">{timerText}</span>
           </div>
         </div>
-      ) : (
-        <div className="flex justify-between items-center">
-          <div className="flex flex-col justify-center">
-            <div className="rounded-md">
-              <p className="text-sm">{elapsedTime}</p>
-            </div>
-            <H3 text="Active Workout" />
-          </div>
-          {activeSession && <EndWorkoutButton workoutSessionId={activeSession.id} />}
-        </div>
-      )}
-    </div>
-  )
+        {activeSession && (
+          <EndWorkoutButton workoutSessionId={activeSession.id} />
+        )}
+      </div>
+    </header>
+  );
 }

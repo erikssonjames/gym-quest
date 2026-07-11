@@ -1,4 +1,5 @@
-import { boolean, date, integer, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./user";
 import { exercise } from "./exercise";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -10,10 +11,14 @@ export const workout = pgTable("workout", {
   description: text("description").notNull(),
   category: text("category").notNull(),
   isPublic: boolean("isPublic").notNull(),
+  archivedAt: timestamp("archivedAt", { mode: "date", withTimezone: true }),
   userId: uuid("userId")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-})
+}, (t) => [
+  index("workout_owner_active_idx").on(t.userId, t.archivedAt),
+  index("workout_public_active_idx").on(t.isPublic, t.archivedAt),
+])
 
 export const workoutSet = pgTable("workoutSet", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -73,11 +78,15 @@ export const workoutSession = pgTable("workoutSession", {
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
   workoutId: uuid("workoutId")
-    .references(() => workout.id, { onDelete: "set null" })
-    .notNull(),
-  startedAt: timestamp("startedAt").defaultNow().notNull(),
+    .references(() => workout.id, { onDelete: "set null" }),
+  startedAt: timestamp("startedAt"),
   endedAt: timestamp("endedAt")
-})
+}, (t) => [
+  index("workout_session_user_started_idx").on(t.userId, t.startedAt),
+  uniqueIndex("workout_session_one_active_per_user")
+    .on(t.userId)
+    .where(sql`${t.endedAt} is null`),
+])
 
 export const workoutSessionLog = pgTable("workoutSessionLog", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -86,11 +95,13 @@ export const workoutSessionLog = pgTable("workoutSessionLog", {
     .references(() => workoutSession.id, { onDelete: "cascade" })
     .notNull(),
   exerciseId: uuid("exerciseId")
-    .references(() => exercise.id, { onDelete: "set null" })
+    .references(() => exercise.id, { onDelete: "restrict" })
     .notNull(),
   startedAt: timestamp("startedAt"),
   endedAt: timestamp("endedAt")
-});
+}, (t) => [
+  index("workout_session_log_session_order_idx").on(t.workoutSessionId, t.order),
+]);
 
 export const workoutSessionLogFragment = pgTable("workoutSessionLogFragment", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -101,9 +112,12 @@ export const workoutSessionLogFragment = pgTable("workoutSessionLogFragment", {
   reps: integer("reps").notNull(),
   weight: integer("weight").notNull(),
   duration: integer("duration").notNull(),
+  restTime: integer("restTime").notNull().default(0),
   startedAt: timestamp("startedAt"),
   endedAt: timestamp("endedAt")
-})
+}, (t) => [
+  index("workout_session_fragment_log_order_idx").on(t.workoutSessionLogId, t.order),
+])
 
 // General types
 
@@ -180,7 +194,9 @@ export const FullWorkoutZod = WorkoutZod.extend({
 })
 export type FullWorkout = z.infer<typeof FullWorkoutZod>
 
-export const CreateWorkoutSessionZod = InsertWorkoutSessionZod.omit({ startedAt: true, userId: true })
+export const CreateWorkoutSessionZod = z.object({
+  workoutId: z.string().uuid().nullable().optional()
+})
 export type CreateWorkoutSession = z.infer<typeof CreateWorkoutSessionZod>
 
 export const CreateWorkoutSessionLogZod = InsertWorkoutSessionLogZod.omit({ startedAt: true })

@@ -138,6 +138,10 @@ function SelectBadgeDrawer ({ button, currentActiveBadge }: { button: ReactNode,
                         <BadgeComponent
                           cursor="pointer"
                           unlocked={badgeProgress?.completed ?? false}
+                          details={{
+                            ...badge,
+                            currentValue: badgeProgress?.currentValue,
+                          }}
                           badge={{
                             id: badge.id,
                             weighting: badge.groupWeighting

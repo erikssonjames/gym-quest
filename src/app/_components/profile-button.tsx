@@ -2,28 +2,28 @@
 
 import { Button } from "@/components/ui/button";
 import type { Session } from "next-auth";
-import { signIn, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import Link from "next/link";
 
 export default function ProfileButton ({ session }: { session: Session | null }) {
   return (
-    <div>
+    <div className="flex items-center gap-2">
       {session && (
-        <Button asChild>
+        <Button asChild variant="outline" size="sm">
           <Link href="/user">
             Dashboard
           </Link>
         </Button>
       )}
-      <Button variant='ghost' onClick={async () => {
-        if (session) {
-          await signOut()
-        } else {
-          await signIn()
-        }
-      }}>
-        <span className="text-primary">{session ? 'Sign out' : 'Sign in'}</span>
-      </Button>
+      {session ? (
+        <Button variant="ghost" size="sm" onClick={() => signOut()}>
+          Sign out
+        </Button>
+      ) : (
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/signin">Sign in</Link>
+        </Button>
+      )}
     </div>
   )
 }

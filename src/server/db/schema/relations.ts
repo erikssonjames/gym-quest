@@ -5,6 +5,8 @@ import { accounts, friendRequest, friendShip, sessions, userPrivateInformation, 
 import { workout, workoutReview, workoutSession, workoutSessionLog, workoutSessionLogFragment, workoutSet, workoutSetCollection, workoutToUser } from "./workout"
 import { friendRequestNotification, notification, workoutReviewNotification } from "./notifications"
 import { badge, badgeProgress, badgeProgressEvent } from "./badges"
+import { feedPost } from "./feed"
+import { aiUsageEvent, aiUsagePeriod, billingCustomer, billingEntitlement, billingPlan, billingPrice, billingSubscription, ownerRevenueLedger } from "./billing"
 
 // User
 
@@ -18,8 +20,48 @@ export const userRelations = relations(users, ({ many, one }) => ({
   friendRequests: many(friendRequest),
   userPrivateInformation: one(userPrivateInformation),
   userProfile: one(userProfile),
-  badges: many(badgeProgress)
+  badges: many(badgeProgress),
+  feedPosts: many(feedPost),
+  billingCustomer: one(billingCustomer),
+  billingSubscriptions: many(billingSubscription),
+  aiUsagePeriods: many(aiUsagePeriod),
+  aiUsageEvents: many(aiUsageEvent),
 }))
+
+export const billingPlanRelations = relations(billingPlan, ({ many }) => ({
+  prices: many(billingPrice),
+  entitlements: many(billingEntitlement),
+  subscriptions: many(billingSubscription),
+}))
+
+export const billingPriceRelations = relations(billingPrice, ({ one }) => ({
+  plan: one(billingPlan, { fields: [billingPrice.planId], references: [billingPlan.id] }),
+}))
+
+export const billingEntitlementRelations = relations(billingEntitlement, ({ one }) => ({
+  plan: one(billingPlan, { fields: [billingEntitlement.planId], references: [billingPlan.id] }),
+}))
+
+export const billingCustomerRelations = relations(billingCustomer, ({ one }) => ({
+  user: one(users, { fields: [billingCustomer.userId], references: [users.id] }),
+}))
+
+export const billingSubscriptionRelations = relations(billingSubscription, ({ one }) => ({
+  user: one(users, { fields: [billingSubscription.userId], references: [users.id] }),
+  plan: one(billingPlan, { fields: [billingSubscription.planId], references: [billingPlan.id] }),
+}))
+
+export const aiUsagePeriodRelations = relations(aiUsagePeriod, ({ one, many }) => ({
+  user: one(users, { fields: [aiUsagePeriod.userId], references: [users.id] }),
+  events: many(aiUsageEvent),
+}))
+
+export const aiUsageEventRelations = relations(aiUsageEvent, ({ one }) => ({
+  user: one(users, { fields: [aiUsageEvent.userId], references: [users.id] }),
+  period: one(aiUsagePeriod, { fields: [aiUsageEvent.periodId], references: [aiUsagePeriod.id] }),
+}))
+
+export const ownerRevenueLedgerRelations = relations(ownerRevenueLedger, () => ({}))
 
 export const userPrivateInformationRelations = relations(userPrivateInformation, ({ one }) => ({
   user: one(users, { fields: [userPrivateInformation.userId], references: [users.id] })
@@ -62,6 +104,15 @@ export const friendRequestRelation = relations(friendRequest, ({ one }) => ({
     fields: [friendRequest.toUserId],
     references: [users.id],
   }),
+}))
+
+// Feed
+
+export const feedPostRelations = relations(feedPost, ({ one }) => ({
+  author: one(users, {
+    fields: [feedPost.userId],
+    references: [users.id]
+  })
 }))
 
 // Badge
@@ -154,7 +205,7 @@ export const workoutSetRelations = relations(workoutSet, ({ one, many }) => ({
   workoutSetCollections: many(workoutSetCollection)
 }));
 
-export const workoutSetCollectionRelations = relations(workoutSetCollection, ({ one, many }) => ({
+export const workoutSetCollectionRelations = relations(workoutSetCollection, ({ one }) => ({
   workoutSet: one(workoutSet, {
     fields: [workoutSetCollection.workoutSetId],
     references: [workoutSet.id]
@@ -162,8 +213,7 @@ export const workoutSetCollectionRelations = relations(workoutSetCollection, ({ 
   exercise: one(exercise, {
     fields: [workoutSetCollection.exerciseId],
     references: [exercise.id]
-  }),
-  workoutSessionLogs: many(workoutSessionLog)
+  })
 }));
 
 export const workoutReviewRelations = relations(workoutReview, ({ one }) => ({
@@ -194,10 +244,6 @@ export const workoutSessionLogRelations = relations(workoutSessionLog, ({ one, m
   exercise: one(exercise, {
     fields: [workoutSessionLog.exerciseId],
     references: [exercise.id]
-  }),
-  workoutSetCollection: one(workoutSetCollection, {
-    fields: [workoutSessionLog.exerciseId],
-    references: [workoutSetCollection.id]
   }),
   workoutSessionLogFragments: many(workoutSessionLogFragment),
 }))

@@ -6,22 +6,25 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { api } from "@/trpc/react"
 import { Loader2, UserRoundX } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { EmptyState } from "@/app/user/@main/_components/page-shell"
 
 export default function FriendsPage () {
   const { data: friends } = api.user.getFriends.useQuery()
   const router = useRouter()
 
   return (
-    <div className="pt-6">
+    <div className="space-y-3">
       {friends?.map(friend => (
-        <div 
+        <Card
           key={friend.id} 
-          className="w-full group hover:bg-accent/40 p-1 rounded-md relative cursor-pointer"
+          className="group cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/20"
           onClick={() => {
             router.push(`/user/profile/${friend.id}`)
           }}
         >
-          <div className="flex gap-4 items-center">
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-4">
             <Avatar className="size-7 text-xs">
               <AvatarImage src={friend.uploadedImage ?? friend.image ?? ""} />
               <AvatarFallback>{friend.username?.at(0) ?? ""}</AvatarFallback>
@@ -29,16 +32,15 @@ export default function FriendsPage () {
             <p className="font-semibold">{friend.username}</p>
           </div>
 
-          <div className="absolute right-0 top-0 bottom-0 h-full flex items-center opacity-0 group-hover:opacity-100">
+          <div className="flex items-center opacity-70 transition-opacity group-hover:opacity-100">
             <UserControls otherUserId={friend.id} />
           </div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
 
       {friends?.length === 0 && (
-        <div className="w-full flex items-center justify-center pt-10">
-          <p className="text-muted-foreground font-semibold">No friends added yet!</p>
-        </div>
+        <EmptyState title="Your circle is empty" description="Add a friend to share progress and make the next session easier to start." />
       )}
     </div>
   )
@@ -62,7 +64,10 @@ function UserControls ({ otherUserId }: { otherUserId: string }) {
               className="size-6"
               variant="ghost"
               disabled={removeFriendPending} 
-              onClick={() => removeFriend(otherUserId)}
+              onClick={(event) => {
+                event.stopPropagation()
+                removeFriend(otherUserId)
+              }}
             >
               {removeFriendPending ? <Loader2 className="animate-spin" /> : <UserRoundX />}
             </Button>

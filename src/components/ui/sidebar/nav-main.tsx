@@ -55,13 +55,13 @@ export function NavMain({
                   tooltip={item.title} 
                   isActive={isActive(item.url) || isPartiallyActive(item.url)}
                   onClick={() => {
-                    if (!open) router.push(item.url)
+                    if (!item.items?.length || !open) router.push(item.url)
                   }}
                   className="group/menu-button"
                 >
                   {item.icon && <item.icon className="group-data-[active=true]/menu-button:text-primary" />}
                   <span className="">{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  {item.items?.length ? <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" /> : null}
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -98,7 +98,8 @@ export function NavMain({
 
 function ActiveWorkoutItem ({ isActive, subItem }:  { isActive: (url: string) => boolean, subItem: SidebarItem }) {
   const { data: activeSession } = api.workout.getActiveWorkoutSession.useQuery()
-  const timePassed = useDisplayTimer(activeSession?.startedAt)
+  const timePassed = useDisplayTimer(activeSession?.startedAt ?? undefined)
+  const timerText = activeSession?.startedAt ? timePassed : "Ready"
 
   return (
     <SidebarMenuSubItem>
@@ -110,7 +111,7 @@ function ActiveWorkoutItem ({ isActive, subItem }:  { isActive: (url: string) =>
                 <Link href={subItem.url}>
                   <span>{subItem.title}</span>
                   <div className="absolute z-10 right-0 bg-sidebar/20 top-0 bottom-0 flex flex-col items-center justify-center px-2 backdrop-blur-sm">
-                    <p>{timePassed}</p>
+                    <p>{timerText}</p>
                   </div>
                 </Link>
               </SidebarMenuSubButton>
@@ -120,11 +121,11 @@ function ActiveWorkoutItem ({ isActive, subItem }:  { isActive: (url: string) =>
                 <div className="flex gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Workout</p>
-                    <p>{activeSession.workout.name}</p>
+                    <p>{activeSession.workout?.name ?? "Empty workout"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Started</p>
-                    <p>{activeSession.startedAt.toTimeString().split("GMT")[0]}</p>
+                    <p>{activeSession.startedAt ? activeSession.startedAt.toTimeString().split("GMT")[0] : "Not started"}</p>
                   </div>
                 </div>
               </TooltipContent>

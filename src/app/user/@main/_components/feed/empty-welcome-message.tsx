@@ -1,63 +1,82 @@
 "use client"
 
-import { activityEmojis, emotionEmojis } from "@/variables/emojis";
-import PostContainer from "./post-container";
-import { ActivityEmojis } from "@/variables/emojis/activity";
-import { NotebookPen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { EmotionEmojis } from "@/variables/emojis/emotion";
+import { ArrowUpRight, Lightbulb, NotebookPen, Target } from "lucide-react"
+import Link from "next/link"
 
-export default function EmptyWelcomeMessage () {
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
+import PostContainer from "./post-container"
+
+export default function EmptyWelcomeMessage() {
   return (
-    <PostContainer>
-      <div className="max-w-[800px]">
-        <p className="font-bold text-3xl">
-            Welcome to Gym Quest! {activityEmojis[ActivityEmojis.PARTY_POPPER].emoji}
+    <PostContainer className="border-primary/20 bg-primary/5 shadow-sm">
+      <CardHeader className="gap-4 p-6 sm:p-7">
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant="secondary">Pinned</Badge>
+          <span className="text-sm text-muted-foreground">GymQuest Team</span>
+          <span className="text-xs text-muted-foreground">Start here</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          <CardTitle className="text-2xl leading-tight sm:text-3xl">
+            Welcome to your new training home.
+          </CardTitle>
+          <CardDescription className="max-w-2xl leading-6">
+            GymQuest is built around a simple idea: consistent work feels better
+            when you can see it, share it, and return to it.
+          </CardDescription>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-5 p-6 pt-0 sm:p-7 sm:pt-0">
+        <p className="max-w-2xl text-sm leading-7">
+          Start small. Pick a goal, log the sessions that move it forward, and let
+          your feed become a record of the person you are becoming.
         </p>
 
-        <p className="mt-8 text-sm">
-          Thank you for being one of the first users on Gym Quest!
-        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-background/70 p-4">
+            <Target className="size-4 text-primary" aria-hidden="true" />
+            <p className="text-sm font-medium">Set a direction</p>
+            <p className="text-xs leading-5 text-muted-foreground">Choose the next useful target.</p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-background/70 p-4">
+            <NotebookPen className="size-4 text-primary" aria-hidden="true" />
+            <p className="text-sm font-medium">Log the work</p>
+            <p className="text-xs leading-5 text-muted-foreground">Make each session count twice.</p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-background/70 p-4">
+            <Lightbulb className="size-4 text-primary" aria-hidden="true" />
+            <p className="text-sm font-medium">Keep learning</p>
+            <p className="text-xs leading-5 text-muted-foreground">Share feedback as you go.</p>
+          </div>
+        </div>
 
-        <div className="mt-4 gap-2 flex items-center">
-          <div className="self-stretch w-1 bg-primary rounded-lg" />
-          <p className="font-semibold">
-            NOTE: Providing feedback and reporting issues/suggestions is completely optional — but greatly appreciated!
+        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-background/70 p-4">
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+          <p className="text-sm leading-6 text-muted-foreground">
+            GymQuest is still growing. If something feels unclear or you have an
+            idea that would make training better, use the feedback button in the
+            top bar.
           </p>
         </div>
+      </CardContent>
 
-        <p className="text-sm mt-4">
-          Since Gym Quest is in its very early stages, we rely heavily on your help and feedback to improve the app. Before you get started, please read this short message!
-        </p>
-
-        <p className="text-sm mt-4">
-          As you explore, you might come across <span className="underline">bugs</span>, notice a <span className="underline">lack of information</span>, or think of <span className="underline">missing features</span> you&apos;d like to see. We hope we&apos;re already aware of most issues and actively working to address them. However, we encourage you to share any feedback you have so we can make Gym Quest better for everyone.
-        </p>
-
-        <p className="text-sm mt-4">
-          To send us a report or suggestion, just click the icon in the top-right corner at any time.
-        </p>
-
-        <div className="border w-fit px-5 py-3 rounded-md mt-4 bg-background/70">
-          <p className="text-xs text-muted-foreground mb-2">Icon for reporting:</p>
-          <Button variant="outline" size="icon">
-            <NotebookPen />
-          </Button>
-        </div>
-
-        <p className="text-sm mt-4">
-          We welcome any and all critique, positive or negative!
-        </p>
-
-        <p className="text-sm mt-4">
-          That&apos;s it from us. Please enjoy the app 
-          {emotionEmojis[EmotionEmojis.RED_HEART].emoji}
-        </p>
-
-        <p className="text-sm">
-          From the <span className="font-bold">Gym Quest Team</span>
-        </p>
-      </div>
+      <CardFooter className="flex-wrap justify-between gap-3 border-t border-border/60 p-6 sm:p-7 sm:pt-5">
+        <p className="text-xs text-muted-foreground">From the GymQuest Team</p>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/user/workouts">
+            Explore workouts
+            <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+          </Link>
+        </Button>
+      </CardFooter>
     </PostContainer>
   )
 }

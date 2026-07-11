@@ -16,6 +16,7 @@ import {
   boolean,
   uniqueIndex,
   pgEnum,
+  check,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import { sql } from 'drizzle-orm';
@@ -26,6 +27,7 @@ type ExtraAdapterAccountType = AdapterAccountType | 'credentials'
 
 export const users = pgTable("user", {
   id: uuid("id").defaultRandom().primaryKey(),
+  createdAt: timestamp("createdAt", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   name: varchar("name", { length: 255 }),
   username: varchar("username", { length: 20 }).unique(),
   email: varchar("email", { length: 255 }).notNull(),
@@ -34,8 +36,12 @@ export const users = pgTable("user", {
     withTimezone: true,
   }).defaultNow(),
   image: varchar("image", { length: 255 }),
-  uploadedImage: varchar("uploadedImage", { length: 255 })
-});
+  uploadedImage: varchar("uploadedImage", { length: 255 }),
+  uploadedImagePublicId: varchar("uploadedImagePublicId", { length: 255 })
+}, (t) => [
+  uniqueIndex("user_email_lower_unique").on(sql`lower(${t.email})`),
+  uniqueIndex("user_username_lower_unique").on(sql`lower(${t.username})`),
+]);
 
 export const userRoleEnum = pgEnum("userRole", ["superAdmin", "admin", "user"])
 export const userPrivateInformation = pgTable("userPrivateInformation", {
@@ -156,9 +162,20 @@ export const friendRequest = pgTable("friendRequest", {
   toUserId: uuid("toUserId")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-  accepted: boolean("accepted").default(false),
-  ignored: boolean("ignored").default(false)
-})
+  accepted: boolean("accepted").default(false).notNull(),
+  ignored: boolean("ignored").default(false).notNull()
+}, (t) => [
+  index("friend_request_from_idx").on(t.fromUserId),
+  index("friend_request_to_idx").on(t.toUserId),
+  index("friend_request_status_idx").on(t.accepted, t.ignored),
+  uniqueIndex("friend_request_one_pending_pair")
+    .on(
+      sql`LEAST(${t.fromUserId}, ${t.toUserId})`,
+      sql`GREATEST(${t.fromUserId}, ${t.toUserId})`,
+    )
+    .where(sql`${t.accepted} = false AND ${t.ignored} = false`),
+  check("friend_request_not_self", sql`${t.fromUserId} <> ${t.toUserId}`),
+])
 
 
 export const friendShip = pgTable(

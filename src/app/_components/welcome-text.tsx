@@ -1,137 +1,173 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { api } from '@/trpc/react'
-import { TRPCClientError } from '@trpc/client'
-import { motion } from 'framer-motion'
-import { Check, LoaderCircle, SendHorizontal } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { TRPCClientError } from "@trpc/client"
+import { motion } from "framer-motion"
+import { ArrowUpRight, Check, LoaderCircle, SendHorizontal, Sparkles } from "lucide-react"
+import Link from "next/link"
+import { useState, type FormEvent } from "react"
+import { toast } from "sonner"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { api } from "@/trpc/react"
 
 export default function WelcomeText() {
-  const [email, setEmail] = useState<string>('')
+  const [email, setEmail] = useState("")
   const { mutateAsync, variables, isPending, isSuccess } = api.user.joinWaitlist.useMutation()
 
-  const onWaitlistSubmit = async () => {
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+
+  const onWaitlistSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     if (!isValidEmail(email)) return
 
     try {
       await mutateAsync({ email })
-
-      toast.success('Success', {
-        description: 'You have succesfully joined the waiting list!',
+      toast.success("You are on the list", {
+        description: "We will let you know when GymQuest is ready for your next session.",
       })
-    } catch (e) {
-      if (e instanceof TRPCClientError) {
-        toast.error('Error', {
-          description: e.message,
-        })
-      }
+    } catch (error) {
+      toast.error("Could not join the waitlist", {
+        description:
+          error instanceof TRPCClientError || error instanceof Error
+            ? error.message
+            : "Please try again in a moment.",
+      })
     }
   }
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
+  const joinedWaitlist = isSuccess && variables?.email === email
 
   return (
-    <div className="flex justify-start flex-col">
-      <h1 className="text-5xl md:text-7xl text-primary font-bold">Working out,</h1>
-      <motion.div
-        transition={{
-          delay: 1,
-          type: 'spring',
-          bounce: 0.7,
-          duration: 1
-        }}
-        initial={{ y: 50, opacity: 0 }}
-        animate={{
-          opacity: 100,
-          y: [null, -5, 20, 0]
-        }}
-      >
-        <h1 className="text-3xl md:text-5xl">
-          But with a 
-          <motion.span
-            className='origin-top-right inline-block relative translate-x-4 overflow-hidden'
-            transition={{
-              delay: 1.05,
-              duration: 0.3,
-              ease: [0, 0.71, 0.2, 1.01],
-              damping: 5,
-              stiffness: 100,
-              restDelta: 0.001,
-              type: 'spring'
-            }}
-            initial={{ rotate: 0, translateX: 16 }}
-            animate={{ rotate: -10, translateX: 16 }}
-          >
-            twist.
-            <motion.div 
-              className='absolute block bottom-0 border-b-4 border-primary w-full'
+    <div className="flex max-w-2xl flex-col gap-8">
+      <Badge variant="secondary" className="w-fit gap-2 px-3 py-1">
+        <Sparkles className="size-3" aria-hidden="true" />
+        A better way to train, together
+      </Badge>
+
+      <div>
+        <h1 className="text-5xl font-semibold tracking-tight text-primary sm:text-7xl">
+          Working out,
+        </h1>
+        <motion.div
+          transition={{
+            delay: 1,
+            type: "spring",
+            bounce: 0.7,
+            duration: 1,
+          }}
+          initial={{ y: 50, opacity: 0 }}
+          animate={{
+            opacity: 100,
+            y: [null, -5, 20, 0],
+          }}
+        >
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
+            But with a{" "}
+            <motion.span
+              className="relative inline-block origin-top-right translate-x-4 overflow-hidden"
               transition={{
+                delay: 1.05,
                 duration: 0.3,
-                delay: 1.5,
+                ease: [0, 0.71, 0.2, 1.01],
                 damping: 5,
                 stiffness: 100,
                 restDelta: 0.001,
-                type: 'spring'
+                type: "spring",
               }}
-              initial={{ x: 150 }}
-              animate={{ x: 0 }}
-            />
-          </motion.span>
-        </h1>
-      </motion.div>
-
-      <div className='flex gap-3 mt-10'>
-        <div className='relative'>
-          <Button disabled className='px-10'>Get started today</Button>
-          <div className='absolute top-8 left-2'>
-            <p className='text-xs text-primary bg-primary-foreground py-1 px-3 rounded-md w-fit'>Coming soon ✨</p>
-            <div className='ms-2 mt-1 flex w-72'>
-              <svg className='w-10 h-20' viewBox='0 0 40 80'>
-                <path fill='none' stroke="#9d31ff" strokeWidth='3px' d="M 5,0 V 55 Q 5,70 20,70 H 35,70" />
-              </svg>
-              <div className="w-full max-w-sm items-center self-end ms-2 mt-4">
-                <Label htmlFor="email">Email</Label>
-                <div className='relative'>
-                  <Input 
-                    type="email" id="email" placeholder="Join waitlist" className='py-4 ps-4 h-12 rounded-lg'
-                    value={email} onChange={e => setEmail(e.target.value)}
-                  />
-                  {isValidEmail(email) && (
-                    <Button 
-                      onClick={onWaitlistSubmit}
-                      variant="default" 
-                      size="icon"
-                      disabled={isPending}
-                      className='absolute right-2 top-0 bottom-0 my-auto size-8'
-                    >
-                      {isPending ? (
-                        <LoaderCircle className='size-4 animate-spin' />
-                      ) : (
-                        <>
-                          {isSuccess && variables.email === email ? (
-                            <Check className='size-4' />
-                          ) : (
-                            <SendHorizontal className='size-4' />
-                          )}
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <Button variant='outline'>Learn more</Button>
+              initial={{ rotate: 0, translateX: 16 }}
+              animate={{ rotate: -10, translateX: 16 }}
+            >
+              twist.
+              <motion.div
+                className="absolute bottom-0 block w-full border-b-4 border-primary"
+                transition={{
+                  duration: 0.3,
+                  delay: 1.5,
+                  damping: 5,
+                  stiffness: 100,
+                  restDelta: 0.001,
+                  type: "spring",
+                }}
+                initial={{ x: 150 }}
+                animate={{ x: 0 }}
+              />
+            </motion.span>
+          </h1>
+        </motion.div>
       </div>
+
+      <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+        GymQuest turns your training routine into a living quest log, so every
+        session has a little more direction and every milestone has somewhere to land.
+      </p>
+
+      <div className="flex flex-wrap gap-3">
+        <Button asChild size="lg">
+          <Link href="/signup">
+            Join the quest
+            <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="lg">
+          <Link href="#how-it-works">See how it works</Link>
+        </Button>
+      </div>
+
+      <Card className="max-w-lg border-border/70 bg-card/80 shadow-sm">
+        <CardHeader className="gap-2 p-5 sm:p-6">
+          <CardTitle className="text-base">Not ready to commit?</CardTitle>
+          <CardDescription>
+            Join the early list and be first to know when the next quest opens.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-5 pt-0 sm:p-6 sm:pt-0">
+          <form onSubmit={onWaitlistSubmit} className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-1 flex-col gap-2">
+              <Label htmlFor="waitlist-email" className="sr-only">
+                Email address
+              </Label>
+              <Input
+                id="waitlist-email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+              />
+            </div>
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!isValidEmail(email) || isPending}
+              aria-label={joinedWaitlist ? "Joined waitlist" : "Join waitlist"}
+            >
+              {isPending ? (
+                <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+              ) : joinedWaitlist ? (
+                <Check data-icon="inline-start" aria-hidden="true" />
+              ) : (
+                <SendHorizontal data-icon="inline-start" aria-hidden="true" />
+              )}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="p-5 pt-0 sm:p-6 sm:pt-0">
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {joinedWaitlist ? "You are on the list." : "No noise. Just the occasional useful update."}
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
-1000 * 1000 * 1000

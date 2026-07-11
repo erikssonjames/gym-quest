@@ -22,6 +22,12 @@ export default function LinkNavigation () {
       >
         Appearance
       </Link>
+      <Link
+        href="/user/settings/billing"
+        className={pathname === "/user/settings/billing" ? activeClass : ''}
+      >
+        Billing & AI
+      </Link>
     </nav>
   )
 }

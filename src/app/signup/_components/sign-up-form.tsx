@@ -1,91 +1,98 @@
 'use client'
 
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, Form } from "@/components/ui/form";
-
-import { AuthError, CredentialsSignin } from "next-auth";
-
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Input } from "@/components/ui/input";
-import { api } from "@/trpc/react";
-import { Button } from "@/components/ui/button";
-import { Loader2Icon } from "lucide-react";
-import { toast } from "sonner";
-import { TRPCClientError } from "@trpc/client";
-import type { SignInData } from "../page";
+import { TRPCClientError } from "@trpc/client"
+import { Eye, EyeOff, Loader2Icon } from "lucide-react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
-const formSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  confirmPassword: z.string().min(8)
-}).superRefine(({ confirmPassword, password }, ctx) => {
-  if (confirmPassword !== password) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'The passwords did not match',
-      path: ['confirmPassword']
-    })
-  }
-})
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { api } from "@/trpc/react"
+import { toast } from "sonner"
+import type { SignInData } from "../page"
 
-export default function SignUpForm(
-  { onSuccessfulSignUpForm }:
-  { onSuccessfulSignUpForm: (data: SignInData) => void }
-) {
-  const utils = api.useUtils()
-  const { mutateAsync, isPending } = api.user.signUp.useMutation({
-    async onSuccess() {
-      await utils.user.getMe.invalidate()
+const formSchema = z
+  .object({
+    email: z.string().email("Enter a valid email address."),
+    password: z.string().min(8, "Use at least 8 characters."),
+    confirmPassword: z.string().min(8, "Use at least 8 characters."),
+  })
+  .superRefine(({ confirmPassword, password }, ctx) => {
+    if (confirmPassword !== password) {
+      ctx.addIssue({
+        code: "custom",
+        message: "The passwords do not match.",
+        path: ["confirmPassword"],
+      })
     }
   })
+
+export default function SignUpForm({
+  onSuccessfulSignUpForm,
+}: {
+  onSuccessfulSignUpForm: (data: SignInData) => void
+}) {
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const { mutateAsync, isPending } = api.user.signUp.useMutation()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      password: '',
-      confirmPassword: '',
-      email: '',
-    }
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
   })
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const { password, email } = values
+    const email = values.email.trim().toLowerCase()
 
     try {
-      await mutateAsync({ email, password })
-      onSuccessfulSignUpForm({ email, password })
-    } catch(error) {
-      const title = 'Something went wrong!'
-      let description = ''
-      if (error instanceof AuthError) {
-        description = error.message
-      } else if (error instanceof CredentialsSignin) {
-        description = error.message
-      } else if (error instanceof TRPCClientError) {
-        description = error.message
-      } else {
-        console.error(error)
-        description = 'Oops, looks like GymQuest is not working as intended at the moment.'
-      }
+      await mutateAsync({ email, password: values.password })
+      onSuccessfulSignUpForm({ email, password: values.password })
+    } catch (error) {
+      const description =
+        error instanceof TRPCClientError || error instanceof Error
+          ? error.message
+          : "GymQuest is not available right now. Please try again."
 
-      toast.error(title, { description, closeButton: true, duration: 1000 * 20 })
+      toast.error("Could not create your account", {
+        description,
+        closeButton: true,
+      })
     }
   }
 
-
   return (
-    <>
+    <div className="flex flex-col gap-5">
+      <p className="text-sm leading-6 text-muted-foreground">
+        We&apos;ll send a quick verification code before your account goes live.
+      </p>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
           <FormField
             control={form.control}
-            name='email'
+            name="email"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder='zyzz@legend.com' {...field} />
+                  <Input
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -93,45 +100,88 @@ export default function SignUpForm(
           />
           <FormField
             control={form.control}
-            name='password'
+            name="password"
             render={({ field }) => (
-              <FormItem className="mb-4">
+              <FormItem>
                 <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='*********' {...field}
-                    type='password'
-                  />
-                </FormControl>
+                <div className="relative">
+                  <FormControl>
+                    <Input
+                      autoComplete="new-password"
+                      className="pe-10"
+                      placeholder="At least 8 characters"
+                      type={showPassword ? "text" : "password"}
+                      {...field}
+                    />
+                  </FormControl>
+                  {field.value.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="size-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="size-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  )}
+                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
           <FormField
             control={form.control}
-            name='confirmPassword'
+            name="confirmPassword"
             render={({ field }) => (
-              <FormItem className="mb-4">
-                <FormLabel>Confirm Password</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder='*********' {...field}
-                    type='password'
-                  />
-                </FormControl>
+              <FormItem>
+                <FormLabel>Confirm password</FormLabel>
+                <div className="relative">
+                  <FormControl>
+                    <Input
+                      autoComplete="new-password"
+                      className="pe-10"
+                      placeholder="Repeat your password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      {...field}
+                    />
+                  </FormControl>
+                  {field.value.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((visible) => !visible)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      aria-label={
+                        showConfirmPassword ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="size-4" aria-hidden="true" />
+                      ) : (
+                        <Eye className="size-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  )}
+                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (
-              <Loader2Icon className="size-6 animate-spin" />
+              <>
+                <Loader2Icon data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+                Creating account...
+              </>
             ) : (
-              <>Sign Up</>
+              "Create account"
             )}
           </Button>
         </form>
       </Form>
-    </>
+    </div>
   )
 }

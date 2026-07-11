@@ -15,7 +15,7 @@ export default function DisplayMuscles () {
   })
 
   return (
-    <div className="py-4 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
+    <div className="grid w-full grid-cols-1 gap-3 py-2 md:grid-cols-2">
       {muscles?.map(m => {
         const { muscleGroup, ...muscle } = m
         return <MuscleComponent key={m.id} muscle={muscle} muscleGroup={muscleGroup} />
@@ -26,15 +26,15 @@ export default function DisplayMuscles () {
 
 function MuscleComponent ({ muscle, muscleGroup }: { muscle: Muscle, muscleGroup: MuscleGroup }) {
   return (
-    <div className="bg-secondary/40 p-4 rounded-md flex gap-2">
+    <div className="flex gap-3 rounded-xl border bg-card/80 p-4 transition-colors hover:border-primary/40">
       <div className="flex-grow">
         <div>
           <p className="inline-block font-semibold pe-2">{muscle.name}</p>
-          <span className="italic text-xs">({muscle.latinName})</span>
+          {muscle.latinName && <span className="text-xs italic text-muted-foreground">({muscle.latinName})</span>}
         </div>
         <div className="mt-4">
           <p className="text-xs text-muted-foreground">Group</p>
-          <p>{muscleGroup.name}</p>
+          <p className="text-sm">{muscleGroup.name}</p>
         </div>
       </div>
       <div className="px-2 flex flex-col gap-2">

@@ -24,14 +24,20 @@ export default function NavbarMinimizer ({ children }: NavbarMinimizerProps) {
   }, []);
   
   return (
-    <nav 
+    <nav
       className={cn(
-        "fixed left-0 right-0 top-0 flex justify-between items-center z-50 transition-all duration-200",
-        scrolled ? "p-4" : "p-10"
+        "fixed inset-x-0 top-0 z-50 px-4 transition-all duration-200",
+        scrolled ? "py-3" : "py-5 lg:py-7",
       )}
-      style={{ maxWidth: '100vw' }}
     >
-      {children}
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-7xl items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/80 px-3 backdrop-blur-md",
+          scrolled ? "py-2 shadow-sm" : "py-3",
+        )}
+      >
+        {children}
+      </div>
     </nav>
   )
 }

@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   BicepsFlexed,
   BookOpen,
+  CreditCard,
   Dumbbell,
   type LucideIcon,
   PersonStanding,
@@ -49,10 +50,15 @@ export const sidebarData: SidebarData = {
       icon: Dumbbell,
       items: [
         { title: "Overview", url: "/user/workouts" },
-        { title: "History", url: "/user/workouts/history", disabled: true },
+        { title: "History", url: "/user/workouts/history" },
         { title: "Manage", url: "/user/workouts/manage" },
         { title: "Active Workout", url: "/user/workouts/active" },
       ],
+    },
+    {
+      title: "Exercises",
+      url: "/user/exercises",
+      icon: PersonStanding,
     },
     {
       title: "Achievements",
@@ -62,7 +68,6 @@ export const sidebarData: SidebarData = {
         { title: "Levels", url: "/user/achievements/levels" },
         { title: "Trophies", url: "/user/achievements/trophies" },
       ],
-      disabled: true
     },
     {
       title: "Documentation",
@@ -74,7 +79,6 @@ export const sidebarData: SidebarData = {
         { title: "Tutorials", url: "/user/documentation/tutorials" },
         { title: "Changelog", url: "/user/documentation/change-log" },
       ],
-      disabled: true
     },
   ],
   navGeneral: [
@@ -90,11 +94,6 @@ export const sidebarData: SidebarData = {
   ],
   navAdmin: [
     {
-      title: "Exercises",
-      url: "/user/exercises",
-      icon: PersonStanding,
-    },
-    {
       title: "Muscles",
       url: "/user/muscles",
       icon: BicepsFlexed,
@@ -103,6 +102,11 @@ export const sidebarData: SidebarData = {
       title: "Badges",
       url: "/user/badges",
       icon: Tag
+    },
+    {
+      title: "Billing",
+      url: "/user/billing",
+      icon: CreditCard
     }
   ],
 };

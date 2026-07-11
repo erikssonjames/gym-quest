@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, primaryKey, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "./user";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
@@ -16,7 +16,7 @@ export const badge = pgTable("badge", {
 
 export const badgeProgress = pgTable(
   "badgeProgress", {
-    id: uuid("id").notNull().defaultRandom(),
+    id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("userId")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
@@ -25,10 +25,11 @@ export const badgeProgress = pgTable(
       .notNull(),
     completed: boolean("completed").notNull()
   },
-  (t) => [primaryKey({ columns: [t.userId, t.badgeId] })]
+  (t) => [unique().on(t.userId, t.badgeId)]
 )
 
 export const badgeProgressEvent = pgTable("badgeProgressEvent", {
+  id: uuid("id").defaultRandom().primaryKey(),
   badgeProgressId: uuid("badgeProgressId")
     .notNull()
     .references(() => badgeProgress.id, { onDelete: "cascade" }),

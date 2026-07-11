@@ -16,6 +16,7 @@ import {
   CircleDot,
   Grip,
   Link2,
+  ListChecks,
   Loader2,
   Pencil,
   Plus,
@@ -42,200 +43,188 @@ import { useExerciseName } from "@/hooks/use-exercise-name"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 type Session = NonNullable<WorkoutActiveSessionOutput> 
 type SessionLog = Session["workoutSessionLogs"][number]
+type Fragment = SessionLog["workoutSessionLogFragments"][number]
 
-interface CurrentSetSplit {
-  completedSessionLogs: Array<Array<SessionLog>>
-  activeSessionLogs: Array<Array<SessionLog>>
-  remainingSessionLogs: Array<Array<SessionLog>>
+interface PlanGroup {
+  id: string
+  order: number
+  sessionLogs: SessionLog[]
+  status: "completed" | "active" | "future"
 }
 
-function groupByOrder(logs: SessionLog[]): Array<Array<SessionLog>> {
-  const map = new Map<number, SessionLog[]>();
+function groupByOrder(logs: SessionLog[]): PlanGroup[] {
+  const map = new Map<number, SessionLog[]>()
 
   for (const log of logs) {
     if (!map.has(log.order)) {
-      map.set(log.order, []);
+      map.set(log.order, [])
     }
-    map.get(log.order)!.push(log);
+    map.get(log.order)!.push(log)
   }
 
-  // Sort by the `order` key, then collect each group as an array
   return Array.from(map.entries())
     .sort(([orderA], [orderB]) => orderA - orderB)
-    .map(([, group]) => group);
+    .map(([order, sessionLogs]) => {
+      const sortedLogs = sessionLogs
+        .map(log => ({
+          ...log,
+          workoutSessionLogFragments: [...log.workoutSessionLogFragments].sort((a, b) => a.order - b.order)
+        }))
+        .sort((a, b) => a.exercise.name.localeCompare(b.exercise.name))
+      const fragments = sortedLogs.flatMap(log => log.workoutSessionLogFragments)
+      const isCompleted = fragments.length > 0 && fragments.every(fragment => fragment.endedAt !== null)
+      const isActive = !isCompleted && fragments.some(fragment => (
+        fragment.startedAt !== null || fragment.endedAt !== null
+      ))
+
+      return {
+        id: sortedLogs.map(log => log.id).join("-"),
+        order,
+        sessionLogs: sortedLogs,
+        status: isCompleted ? "completed" : isActive ? "active" : "future"
+      }
+    })
 }
 
 export default function ActiveWorkoutDisplay () {
   const { data: activeWorkoutSession } = api.workout.getActiveWorkoutSession.useQuery()
+  const [planOpen, setPlanOpen] = useState(false)
 
-  const setSplit: CurrentSetSplit = useMemo(() => {
-    if (!activeWorkoutSession) {
-      return { completedSessionLogs: [], activeSessionLogs: [], remainingSessionLogs: [] };
-    }
+  const planGroups = useMemo(() => {
+    if (!activeWorkoutSession) return []
 
-    const { workoutSessionLogs } = activeWorkoutSession;
-  
-    const completed: SessionLog[] = [];
-    const active: SessionLog[] = [];
-    const remaining: SessionLog[] = [];
+    return groupByOrder(activeWorkoutSession.workoutSessionLogs)
+  }, [activeWorkoutSession])
 
-    workoutSessionLogs.forEach(log => {
-      const isCompleted = log.workoutSessionLogFragments.every((fragment) => fragment.endedAt !== null);
-      const isActive = !isCompleted && log.workoutSessionLogFragments.some((f) => f.startedAt !== null);
-
-      if (isCompleted) {
-        completed.push(log);
-      } else if (isActive) {
-        active.push(log);
-      } else {
-        remaining.push(log);
-      }
-    });
-
-    return {
-      completedSessionLogs: groupByOrder(completed),
-      activeSessionLogs: groupByOrder(active),
-      remainingSessionLogs: groupByOrder(remaining),
-    };
-  }, [activeWorkoutSession]);
+  useEffect(() => {
+    if (activeWorkoutSession?.workoutSessionLogs.length === 0) setPlanOpen(true)
+  }, [activeWorkoutSession?.workoutSessionLogs.length])
 
   if (!activeWorkoutSession) return null
 
+  const remainingSetCount = activeWorkoutSession.workoutSessionLogs.reduce((count, log) => {
+    return count + log.workoutSessionLogFragments.filter(fragment => fragment.endedAt === null).length
+  }, 0)
+
   return (
-    <div className="w-full space-y-2 mt-6 flex-grow overflow-auto">
-      <CompletedSetsComponent sessionLogs={setSplit.completedSessionLogs} />
-      <ActiveSetComponent sessionLogs={setSplit.activeSessionLogs} />
-      <RemainingSetsComponent 
-        sessionLogs={setSplit.remainingSessionLogs}
-        sessionId={activeWorkoutSession.id}
-      />
-      <div className="h-14 flex items-end">
+    <Collapsible className="mt-4 w-full pb-8" onOpenChange={setPlanOpen} open={planOpen}>
+      <div className="flex items-center justify-between gap-3 border-y py-3">
+        <CollapsibleTrigger asChild>
+          <Button className="h-auto min-w-0 justify-start px-2 py-1" variant="ghost">
+            <ListChecks className="size-4 flex-shrink-0" />
+            <span className="min-w-0 text-left">
+              <span className="block text-sm font-semibold">Session plan</span>
+              <span className="block truncate text-xs font-normal text-muted-foreground">
+                {remainingSetCount} remaining · {planGroups.length} group{planGroups.length === 1 ? "" : "s"}
+              </span>
+            </span>
+            <ChevronDown className={cn("size-4 flex-shrink-0 transition-transform", planOpen && "rotate-180")} />
+          </Button>
+        </CollapsibleTrigger>
         <AddSetDialog
           sessionId={activeWorkoutSession.id}
           startingOrder={
             activeWorkoutSession.workoutSessionLogs.reduce<number>((acc, curr) => {
               return acc > curr.order ? acc : curr.order
-            }, 0) + 1
+            }, -1) + 1
           }
         />
       </div>
-    </div>
+
+      <CollapsibleContent>
+        <div className="pt-3">
+          {planGroups.length === 0
+            ? (
+              <div className="rounded-md border border-dashed p-5">
+                <div className="max-w-lg">
+                  <p className="font-medium">This workout is empty.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add an exercise to build the session as you train.
+                  </p>
+                </div>
+              </div>
+            )
+            : <PlanGroupList sessionId={activeWorkoutSession.id} groups={planGroups} />}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
-function CompletedSetsComponent ({ sessionLogs }: { sessionLogs: Array<Array<SessionLog>> }) {
-  if (sessionLogs.length === 0) return null
-
-  return sessionLogs.map(logs => (
-    <div 
-      key={logs.map(log => log.id).join("-")} 
-      className="flex gap-4 items-center"
-    >
-      <CircleCheck className="size-5 text-green-400" />
-      <div className="flex items-baseline gap-2">
-        <p className="text-xs text-muted-foreground">
-          {logs.at(0)?.workoutSessionLogFragments.length ?? 0}x
-        </p>
-        <p>{logs.map(log => log.exercise.name).join(", ")}</p>
-      </div>
-    </div>
-  ))
-}
-
-function ActiveSetComponent ({ sessionLogs }: { sessionLogs: Array<Array<SessionLog>> }) {
-  if (sessionLogs.length === 0) return null
-
-  return sessionLogs.map(logs => (
-    <div 
-      key={logs.map(log => log.id).join("-")} 
-      className="flex gap-4 items-center"
-    >
-      <CircleDot className="size-5 text-blue-600" />
-      <div className="flex items-baseline gap-2">
-        <p className="text-xs text-muted-foreground">
-          {logs.at(0)?.workoutSessionLogFragments.length ?? 0}x
-        </p>
-        <p>{logs.map(log => log.exercise.name).join(", ")}</p>
-      </div>
-    </div>
-  ))
-  
-}
-
-function RemainingSetsComponent (
-  { sessionLogs, sessionId }: { sessionLogs: Array<Array<SessionLog>>, sessionId: string }
-) {
+function PlanGroupList ({ sessionId, groups }: { sessionId: string, groups: PlanGroup[] }) {
   const utils = api.useUtils()
   const { mutate, isPending } = api.workout.swapSessionLogPositions.useMutation({
     onSuccess: () => utils.workout.getActiveWorkoutSession.invalidate()
   })
-  const [tempSessionLogs, setTempSessionLogs] = useState(
-    sessionLogs.map(logs => ({
-      id: logs.map(log => log.id).join("-"),
-      sessionLogs: logs
-    }))
-  )
+  const [futureGroups, setFutureGroups] = useState(groups.filter(group => group.status === "future"))
 
   useEffect(() => {
-    setTempSessionLogs(
-      sessionLogs.map(logs => ({
-        id: logs.map(log => log.id).join("-"),
-        sessionLogs: logs
-      }))
-    )
-  }, [sessionLogs])
+    setFutureGroups(groups.filter(group => group.status === "future"))
+  }, [groups])
 
-  if (sessionLogs.length === 0) return null
+  const lockedGroups = groups.filter(group => group.status !== "future")
 
   return (
-    <DndContext
-      onDragEnd={handleDragEnd}
-      collisionDetection={closestCenter}
-    >
-      <SortableContext
-        items={tempSessionLogs}
-        strategy={verticalListSortingStrategy}
-      >
-        {tempSessionLogs.map(({ id, sessionLogs: logs }) => (
-          <RemainingSetComponent 
-            key={id} 
-            sessionLogs={logs} 
-            isMovingPending={isPending} 
-          />
-        ))}
-      </SortableContext>
-    </DndContext>
+    <div className="space-y-3 pb-16">
+      {lockedGroups.map(group => (
+        <PlanGroupCard key={group.id} group={group} isMovingPending={false} />
+      ))}
+
+      {futureGroups.length > 0 && (
+        <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+          <SortableContext
+            items={futureGroups.map(group => group.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {futureGroups.map(group => (
+              <SortablePlanGroupCard
+                key={group.id}
+                group={group}
+                isMovingPending={isPending}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
+    </div>
   )
 
   function handleDragEnd (event: DragEndEvent) {
     if (isPending) return
     const { active, over } = event
     if (over && active.id !== over.id) {
-      setTempSessionLogs(prev => {
-        const fromIndex = prev.findIndex(log => log.id === active.id)
-        const toIndex = prev.findIndex(log => log.id === over.id)
-
+      setFutureGroups(prev => {
+        const fromIndex = prev.findIndex(group => group.id === active.id)
+        const toIndex = prev.findIndex(group => group.id === over.id)
         const movedArray = arrayMove(prev, fromIndex, toIndex)
-        const newOrder = movedArray.map((fragment, index) => ({
-          id: fragment.id,
-          order: index
-        }))
+        const firstFutureOrder = futureGroups.at(0)?.order ?? lockedGroups.length
+        const newOrder = movedArray.flatMap((group, index) => (
+          group.sessionLogs.map(log => ({
+            id: log.id,
+            order: firstFutureOrder + index
+          }))
+        ))
 
         mutate({
           fragments: newOrder,
           sessionId
         })
 
-        return movedArray
+        return movedArray.map((group, index) => ({
+          ...group,
+          order: firstFutureOrder + index
+        }))
       })
     }
   }
 }
-function RemainingSetComponent (
-  { sessionLogs, isMovingPending }:  { sessionLogs: Array<SessionLog>, isMovingPending: boolean }
+
+function SortablePlanGroupCard (
+  { group, isMovingPending }:  { group: PlanGroup, isMovingPending: boolean }
 ) {
   const {
     attributes,
@@ -246,7 +235,7 @@ function RemainingSetComponent (
     transition,
     isDragging
   } = useSortable({ 
-    id: sessionLogs.map(log => log.id).join("-"),
+    id: group.id,
     disabled: isMovingPending
   })
 
@@ -256,42 +245,136 @@ function RemainingSetComponent (
   }
 
   return (
-    <div
-      className="flex gap-4 items-center justify-between cursor-default"
-      style={style}
-      {...attributes}
-      ref={setNodeRef}
-    >
-      <div className="flex gap-4 items-center">
-        <button 
-          className={cn(
-            "text-muted-foreground",
-            isMovingPending 
-              ? "cursor-wait" 
-              : isDragging
-                ? "cursor-grabbing"
-                : "cursor-grab"
+    <div style={style} {...attributes} ref={setNodeRef}>
+      <PlanGroupCard
+        group={group}
+        isMovingPending={isMovingPending}
+        isDragging={isDragging}
+        dragHandleRef={setDraggableNodeRef}
+        dragListeners={listeners}
+      />
+    </div>
+  )
+}
+
+function PlanGroupCard ({
+  group,
+  isMovingPending,
+  isDragging,
+  dragHandleRef,
+  dragListeners
+}: {
+  group: PlanGroup,
+  isMovingPending: boolean,
+  isDragging?: boolean,
+  dragHandleRef?: (element: HTMLElement | null) => void,
+  dragListeners?: ReturnType<typeof useSortable>["listeners"]
+}) {
+  const setCount = group.sessionLogs.at(0)?.workoutSessionLogFragments.length ?? 0
+  const canEdit = group.status === "future"
+
+  return (
+    <div className={cn(
+      "rounded-md border bg-card/20 p-3",
+      group.status === "active" && "border-primary/60 bg-primary/5",
+      group.status === "completed" && "border-primary/40 bg-primary/5",
+      isDragging && "outline outline-primary/20"
+    )}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          {canEdit && dragHandleRef ? (
+            <button
+              className={cn(
+                "mt-1 text-muted-foreground",
+                isMovingPending
+                  ? "cursor-wait"
+                  : isDragging
+                    ? "cursor-grabbing"
+                    : "cursor-grab"
+              )}
+              {...dragListeners}
+              disabled={isMovingPending}
+              ref={dragHandleRef}
+              type="button"
+            >
+              {isMovingPending ? <Loader2 className="animate-spin" size={16} /> : <Grip size={16} />}
+            </button>
+          ) : (
+            <StatusIcon status={group.status} />
           )}
-          {...listeners}
-          disabled={isMovingPending}
-          ref={setDraggableNodeRef}
-        >
-          {isMovingPending ? <Loader2 className="animate-spin" size={16} /> : <Grip size={16} />}
-        </button>
-        <Circle className="size-5" />
-        <div className="flex items-baseline gap-2">
-          <p className="text-xs text-muted-foreground">
-            {sessionLogs.at(0)?.workoutSessionLogFragments.length ?? 0}x
-          </p>
-          <p>{sessionLogs.map(log => log.exercise.name).join(", ")}</p>
+          <div>
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <p className="font-semibold">{group.sessionLogs.map(log => log.exercise.name).join(", ")}</p>
+              <p className="text-xs text-muted-foreground">{setCount} set{setCount === 1 ? "" : "s"}</p>
+            </div>
+            <p className="text-xs capitalize text-muted-foreground">{group.status}</p>
+          </div>
         </div>
+
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <EditRemainingSetDialog sessionLogs={group.sessionLogs} />
+            <DeleteRemainingSetDialog sessionLogs={group.sessionLogs} />
+          </div>
+        )}
       </div>
 
-      <div className="flex gap-2 items-center">
-        <EditRemainingSetDialog sessionLogs={sessionLogs} />
-        <DeleteRemainingSetDialog sessionLogs={sessionLogs} />
+      <div className="space-y-3">
+        {group.sessionLogs.map(log => (
+          <div key={log.id} className="rounded-sm border bg-background/30 p-2">
+            <p className="mb-2 text-sm font-medium">{log.exercise.name}</p>
+            <div className="space-y-1">
+              {log.workoutSessionLogFragments.map(fragment => (
+                <SetFragmentRow key={fragment.id} fragment={fragment} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
+  )
+}
+
+function StatusIcon ({ status }: { status: PlanGroup["status"] }) {
+  if (status === "completed") return <CircleCheck className="mt-1 size-5 flex-shrink-0 text-primary" />
+  if (status === "active") return <CircleDot className="mt-1 size-5 flex-shrink-0 text-primary" />
+  return <Circle className="mt-1 size-5 flex-shrink-0" />
+}
+
+function SetFragmentRow ({ fragment }: { fragment: Fragment }) {
+  let status: "Skipped" | "Done" | "Active" | "Planned" = "Planned"
+  if (fragment.startedAt) status = "Active"
+  if (fragment.startedAt && fragment.endedAt) status = "Done"
+  if (!fragment.startedAt && fragment.endedAt) status = "Skipped"
+
+  return (
+    <div className="grid grid-cols-[auto,1fr] gap-2 rounded-sm px-2 py-1 text-sm md:grid-cols-[auto,1fr,1fr]">
+      <p className="text-xs font-medium text-muted-foreground">#{fragment.order + 1}</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        <Metric label="Reps" value={fragment.reps} />
+        <Metric label="Weight" value={`${fragment.weight}kg`} />
+        <Metric label="Duration" value={`${fragment.duration}s`} />
+        <Metric label="Rest" value={`${fragment.restTime}s`} />
+      </div>
+      <p className={cn(
+        "text-xs font-medium md:text-right",
+        status === "Done" && "text-primary",
+        status === "Skipped" && "text-muted-foreground",
+        status === "Active" && "text-primary",
+        status === "Planned" && "text-muted-foreground"
+      )}>
+        {status}
+      </p>
+    </div>
+  )
+}
+
+function Metric ({ label, value }: { label: string, value: string | number }) {
+  return (
+    <span className="whitespace-nowrap">
+      <span className="text-xs text-muted-foreground">{label}: </span>
+      <span>{value}</span>
+    </span>
   )
 }
 
@@ -304,6 +387,7 @@ type EditedSessionLogs = Array<
     >
   }
 >
+
 function EditRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<SessionLog> }) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -320,7 +404,11 @@ function EditRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<SessionLo
   const [numberOfSets, setNumberOfSets] = useState(
     sessionLogs.at(0)?.workoutSessionLogFragments.length ?? 0
   )
-  const { getExerciseName } = useExerciseName()
+
+  useEffect(() => {
+    setEditedLogs(sessionLogs)
+    setNumberOfSets(sessionLogs.at(0)?.workoutSessionLogFragments.length ?? 0)
+  }, [sessionLogs])
 
   const onSaveChanges = () => {
     const newLogs = {
@@ -345,36 +433,16 @@ function EditRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<SessionLo
 
   const onReset = () => {
     setEditedLogs(sessionLogs)
+    setNumberOfSets(sessionLogs.at(0)?.workoutSessionLogFragments.length ?? 0)
   }
   
   useEffect(() => {
-    setEditedLogs(prev => {
-      const copy = prev.map(p => {
-        let newFragments = [...p.workoutSessionLogFragments]
-        if (p.workoutSessionLogFragments.length < numberOfSets) {
-          for (let i = 0; i < (numberOfSets - p.workoutSessionLogFragments.length); i++) {
-            newFragments.push({
-              weight: 0,
-              reps: 0,
-              workoutSessionLogId: p.id,
-              order: p.workoutSessionLogFragments.length + i,
-              duration: 0,
-              endedAt: null,
-              startedAt: null
-            })
-          }
-        } else {
-          newFragments = newFragments.slice(0, numberOfSets)
-        }
-
-        return {
-          ...p,
-          workoutSessionLogFragments: newFragments
-        }
-      })
-
-      return copy
-    })
+    setEditedLogs(prev => (
+      prev.map(log => ({
+        ...log,
+        workoutSessionLogFragments: resizeFragments(log.workoutSessionLogFragments, numberOfSets, log.id)
+      }))
+    ))
   }, [numberOfSets])
 
   return (
@@ -384,7 +452,8 @@ function EditRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<SessionLo
         if (!open) {
           setTimeout(() => {
             setEditedLogs(sessionLogs)
-          }, 500)
+            setNumberOfSets(sessionLogs.at(0)?.workoutSessionLogFragments.length ?? 0)
+          }, 300)
         }
         setDialogOpen(open)
       }}
@@ -394,148 +463,25 @@ function EditRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<SessionLo
           <Pencil size={14} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader>
-          <DialogTitle>Edit {sessionLogs.length > 1 ? "super set" : "set"}</DialogTitle>
+          <DialogTitle>Edit {sessionLogs.length > 1 ? "superset" : "set"}</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-8">
-          {Object.values(editedLogs
-            .reduce<Record<number, EditedSessionLogs>>((acc, curr) => {
-              if (!(curr.order in acc)) {
-                acc[curr.order] = []
-              }
-              acc[curr.order]!.push(curr)
-              return acc
-            }, {}))
-            .map(logs => (
-              <div 
-                key={`${logs.map(l => l.id).join("~")}-edit-set`}
-                className="space-y-2"
-              >
-                {logs.map((log, logIndex) => (
-                  <div key={log.id} className="relative">
-                    <div className="relative p-4 bg-card/20 rounded-md border">
-                      <div className="w-full flex gap-2 items-center justify-between">
-                        <div className="flex gap-2 flex-wrap">
-                          <div className="w-full md:w-fit md:min-w-60">
-                            <p className="text-xs text-muted-foreground">Select Exercise</p>
-      
-                            <SelectExercise
-                              onSelectExercise={(newExerciseId) => {
-                                setEditedLogs(prev => {
-                                  const copy = [...prev]
-                                  const oldLog = copy[logIndex]
-                                  if (!oldLog) return prev
-                                  copy[logIndex] = {
-                                    ...oldLog,
-                                    exerciseId: newExerciseId
-                                  }
-                                  return copy
-                                })
-                              }}
-                              button={({ onClick }) => (
-                                <Button onClick={onClick} type="button" variant="ghost" className="text-xl ps-0">
-                                  {getExerciseName(log.exerciseId)}
-                                  <ChevronDown />
-                                </Button>
-                              )}
-                            />
-                          </div>
-      
-                          <div className="flex gap-2 flex-wrap">
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground">Sets</p>
-                              <Input 
-                                value={numberOfSets} 
-                                onChange={(e) => setNumberOfSets(isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
-                                className="w-12"  
-                              />
-                            </div>
-      
-                            <IntegerSelectArray
-                              label="Reps"
-                              onSetValues={(reps) => {
-                                setEditedLogs(prev => {
-                                  const copy = [...prev]
-                                  const oldLog = copy[logIndex]
-                                  if (!oldLog) return prev
-                                  copy[logIndex] = {
-                                    ...oldLog,
-                                    workoutSessionLogFragments: oldLog.workoutSessionLogFragments
-                                      .map((f, index) => ({
-                                        ...f,
-                                        reps: reps.at(index) ?? 0
-                                      }))
-                                  }
-                                  return copy
-                                })
-                              }}
-                              numberOfSets={numberOfSets}
-                              initialValues={log.workoutSessionLogFragments.map(f => f.reps)}
-                            />
-                          </div>
-                        </div>
-      
-                        {editedLogs.length > 1 && (
-                          <Button 
-                            type="button" 
-                            onClick={() => {
-                              setEditedLogs(prev => {
-                                const copy = [...prev]
-                                return copy.filter(l => l.id !== log.id)
-                              })
-                            }}
-                            size="icon" 
-                            variant="ghost" 
-                            className="size-7"
-                          >
-                            <X />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-      
-                    {logIndex !== logs.length - 1 && logs.length > 0 && (
-                      <div className="absolute -bottom-4 left-2 flex justify-center items-center">
-                        <button 
-                          className="group relative p-0 m-0" type="button" 
-                          onClick={() => {
-                            const indexOfPressLog = editedLogs.findIndex(l => log.id === l.id)
-                            console.log('indexOfPressLog', indexOfPressLog)
-                            if (indexOfPressLog === -1) return
-                            setEditedLogs(prev => {
-                              const copy = [...prev]
-                              return copy.map(log => {
-                                const index = prev.findIndex(l => log.id === l.id)
-                                return {
-                                  ...log,
-                                  order: index <= indexOfPressLog ? log.order : log.order + 1
-                                }
-                              })
-                            })
-                          }}
-                        >
-                          <Link2 className="rotate-90 text-primary opacity-100 group-hover:opacity-0 transition-all" />
-                          <X className="group-hover:opacity-100 opacity-0 absolute inset-0 transition-all text-primary" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))
-          }
-        </div>
+        <SessionLogsEditor
+          logs={editedLogs}
+          numberOfSets={numberOfSets}
+          setNumberOfSets={setNumberOfSets}
+          setLogs={setEditedLogs}
+        />
 
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={onReset}>Reset</Button>
           <Button 
             type="button" 
             onClick={onSaveChanges}
-            disabled={isPending}
+            disabled={isPending || editedLogs.length === 0 || numberOfSets === 0}
           >
             Save changes
             {isPending && <Loader2 className="animate-spin" />}
@@ -546,17 +492,207 @@ function EditRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<SessionLo
   )
 }
 
+type EditableLogs = Array<{
+  id?: string
+  exerciseId: string
+  order: number
+  startedAt: Date | null
+  endedAt: Date | null
+  workoutSessionId: string
+  workoutSessionLogFragments: Array<{
+    id?: string
+    workoutSessionLogId?: string
+    order: number
+    reps: number
+    weight: number
+    duration: number
+    restTime: number
+    startedAt: Date | null
+    endedAt: Date | null
+  }>
+}>
+
+function SessionLogsEditor<T extends EditableLogs> ({
+  logs,
+  numberOfSets,
+  setNumberOfSets,
+  setLogs
+}: {
+  logs: T,
+  numberOfSets: number,
+  setNumberOfSets: (sets: number) => void,
+  setLogs: (updater: (prev: T) => T) => void
+}) {
+  const { getExerciseName } = useExerciseName()
+
+  return (
+    <div className="max-h-[65vh] space-y-4 overflow-auto pr-1">
+      {logs.map((log, logIndex) => (
+        <div key={log.id ?? `${log.exerciseId}-${logIndex}`} className="relative rounded-md border bg-card/20 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-wrap gap-3">
+              <div className="w-full md:w-fit md:min-w-60">
+                <p className="text-xs text-muted-foreground">Exercise</p>
+
+                <SelectExercise
+                  onSelectExercise={(newExerciseId) => {
+                    setLogs(prev => {
+                      const copy = [...prev] as T
+                      const oldLog = copy[logIndex]
+                      if (!oldLog) return prev
+                      copy[logIndex] = {
+                        ...oldLog,
+                        exerciseId: newExerciseId
+                      }
+                      return copy
+                    })
+                  }}
+                  button={({ onClick }) => (
+                    <Button onClick={onClick} type="button" variant="ghost" className="ps-0 text-xl">
+                      {getExerciseName(log.exerciseId)}
+                      <ChevronDown />
+                    </Button>
+                  )}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Sets</p>
+                  <Input
+                    value={numberOfSets}
+                    onChange={(e) => setNumberOfSets(isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
+                    className="w-12"
+                  />
+                </div>
+
+                <IntegerSelectArray
+                  label="Reps"
+                  onSetValues={(reps) => updateFragmentValues(setLogs, logIndex, "reps", reps)}
+                  numberOfSets={numberOfSets}
+                  initialValues={log.workoutSessionLogFragments.map(f => f.reps)}
+                />
+
+                <IntegerSelectArray
+                  label="Weight (kg)"
+                  onSetValues={(weight) => updateFragmentValues(setLogs, logIndex, "weight", weight)}
+                  numberOfSets={numberOfSets}
+                  initialValues={log.workoutSessionLogFragments.map(f => f.weight)}
+                />
+
+                <IntegerSelectArray
+                  label="Duration (s)"
+                  onSetValues={(duration) => updateFragmentValues(setLogs, logIndex, "duration", duration)}
+                  numberOfSets={numberOfSets}
+                  initialValues={log.workoutSessionLogFragments.map(f => f.duration)}
+                />
+
+                <IntegerSelectArray
+                  label="Rest (s)"
+                  onSetValues={(restTime) => updateFragmentValues(setLogs, logIndex, "restTime", restTime)}
+                  numberOfSets={numberOfSets}
+                  initialValues={log.workoutSessionLogFragments.map(f => f.restTime)}
+                />
+              </div>
+            </div>
+
+            {logs.length > 1 && (
+              <Button
+                type="button"
+                onClick={() => {
+                  setLogs(prev => prev.filter((_, index) => index !== logIndex) as T)
+                }}
+                size="icon"
+                variant="ghost"
+                className="size-7"
+              >
+                <X />
+              </Button>
+            )}
+          </div>
+
+          {logIndex !== logs.length - 1 && logs.length > 0 && (
+            <div className="absolute -bottom-4 left-2 flex items-center justify-center">
+              <button
+                className="group relative m-0 p-0"
+                type="button"
+                onClick={() => {
+                  setLogs(prev => (
+                    prev.map((prevLog, index) => ({
+                      ...prevLog,
+                      order: index <= logIndex ? prevLog.order : prevLog.order + 1
+                    })) as T
+                  ))
+                }}
+              >
+                <Link2 className="rotate-90 text-primary opacity-100 transition-all group-hover:opacity-0" />
+                <X className="absolute inset-0 text-primary opacity-0 transition-all group-hover:opacity-100" />
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function updateFragmentValues<T extends EditableLogs>(
+  setLogs: (updater: (prev: T) => T) => void,
+  logIndex: number,
+  key: "reps" | "weight" | "duration" | "restTime",
+  values: Array<number>
+) {
+  setLogs(prev => {
+    const copy = [...prev] as T
+    const oldLog = copy[logIndex]
+    if (!oldLog) return prev
+    copy[logIndex] = {
+      ...oldLog,
+      workoutSessionLogFragments: oldLog.workoutSessionLogFragments
+        .map((fragment, index) => ({
+          ...fragment,
+          [key]: values.at(index) ?? 0
+        }))
+    }
+    return copy
+  })
+}
+
+function resizeFragments<T extends EditableLogs[number]["workoutSessionLogFragments"]>(
+  fragments: T,
+  numberOfSets: number,
+  workoutSessionLogId?: string
+): T {
+  if (fragments.length < numberOfSets) {
+    const newFragments = [...fragments]
+    for (let i = 0; i < (numberOfSets - fragments.length); i++) {
+      newFragments.push({
+        weight: 0,
+        reps: 0,
+        workoutSessionLogId,
+        order: fragments.length + i,
+        duration: 0,
+        restTime: 0,
+        endedAt: null,
+        startedAt: null
+      })
+    }
+    return newFragments as T
+  }
+
+  return fragments.slice(0, numberOfSets) as T
+}
+
 function IntegerSelectArray(
   { label, onSetValues, numberOfSets, initialValues }: 
   { label: string, onSetValues: (values: Array<number>) => void, numberOfSets: number, initialValues: Array<number> }
 ) {
   const [splitValues, setSplitValues] = useState(false)
-  const [internalValues, setIntervalValues] = useState(initialValues)
+  const [internalValues, setInternalValues] = useState(initialValues)
 
   const onSetValuesCallback = useCallback((arr: number[]) => {
-    onSetValues(arr);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    onSetValues(arr)
+  }, [onSetValues])
 
   const onInputChange = useCallback((val: string, index: number) => {
     let copyValues = []
@@ -569,20 +705,18 @@ function IntegerSelectArray(
       copyValues = internalValues.slice(0, Math.max(1, numberOfSets))
     }
 
-    // const copyValues = [...internalValues]
-    
     if (splitValues) {
       copyValues[index] = isNaN(Number(val)) ? 0 : Number(val)
     } else {
       copyValues = copyValues.map(() => isNaN(Number(val)) ? 0 : Number(val))
     }
 
-    setIntervalValues(copyValues)
+    setInternalValues(copyValues)
     onSetValuesCallback(copyValues)
   }, [onSetValuesCallback, internalValues, numberOfSets, splitValues])
 
   useEffect(() => {
-    setIntervalValues((prev) => {
+    setInternalValues((prev) => {
       if (numberOfSets === 0) return [prev.at(0) ?? 0]
 
       if (numberOfSets > prev.length) {
@@ -593,25 +727,32 @@ function IntegerSelectArray(
       } else {
         return prev.slice(0, numberOfSets)
       }
-    });
-  }, [numberOfSets, splitValues]);
+    })
+  }, [numberOfSets, splitValues])
+
+  useEffect(() => {
+    setInternalValues((previousValues) => {
+      if (
+        previousValues.length === initialValues.length &&
+        previousValues.every((value, index) => value === initialValues[index])
+      ) {
+        return previousValues
+      }
+
+      return initialValues
+    })
+  }, [initialValues])
 
   useEffect(() => {
     if (numberOfSets <= 1 || numberOfSets > 10) setSplitValues(false)
   }, [numberOfSets])
 
-  useEffect(() => {
-    if (internalValues.length > 0) {
-      onSetValuesCallback(internalValues);
-    }
-  }, [internalValues, onSetValuesCallback]);
-
   return (
     <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <div className={cn(
         "relative",
-        splitValues && numberOfSets > 0 && "border border-dashed border-accent-foreground/40 rounded-sm p-1"
+        splitValues && numberOfSets > 0 && "rounded-sm border border-dashed border-accent-foreground/40 p-1"
       )}>
         {splitValues && numberOfSets > 0 ? (
           <div className="flex gap-2 pe-10">
@@ -620,13 +761,13 @@ function IntegerSelectArray(
                 <Input 
                   value={internalValues.at(index) ?? 0} 
                   onChange={(e) => onInputChange(e.target.value, index)} 
-                  className="w-12 h-8" />
+                  className="h-8 w-12" />
                 {index < numberOfSets - 1 && <ChevronRight size={12} />}
               </div>
             ))}
           </div>
         ) : (
-          <Input value={internalValues[0]} onChange={(e) => onInputChange(e.target.value, 0)} className="w-20 pe-10" type="" />
+          <Input value={internalValues[0] ?? 0} onChange={(e) => onInputChange(e.target.value, 0)} className="w-20 pe-10" />
         )}
         {numberOfSets > 1 && (
           <TooltipProvider delayDuration={100}>
@@ -637,8 +778,8 @@ function IntegerSelectArray(
                   variant={splitValues ? "ghost" : "secondary"}
                   size="icon" 
                   className={cn(
-                    "absolute top-0 bottom-0 size-6 m-2",
-                    splitValues && numberOfSets > 0 ? "-right-0" : "size-6 m-2 right-0"
+                    "absolute bottom-0 top-0 m-2 size-6",
+                    splitValues && numberOfSets > 0 ? "-right-0" : "right-0 m-2 size-6"
                   )}
                   disabled={numberOfSets > 10}
                   onClick={() => setSplitValues(!splitValues)}
@@ -647,7 +788,7 @@ function IntegerSelectArray(
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {splitValues && numberOfSets <= 10 ? `Assign same ${label} for each rep` : `Assign specific ${label} for each set`}
+                {splitValues && numberOfSets <= 10 ? `Assign same ${label} for each set` : `Assign specific ${label} for each set`}
                 {numberOfSets > 10 && "You can assign specific values for sets this large"}
               </TooltipContent>
             </Tooltip>
@@ -695,7 +836,7 @@ function DeleteRemainingSetDialog ({ sessionLogs }: { sessionLogs: Array<Session
       </DialogTrigger>
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle>Delete {sessionLogs.length > 1 ? "super set" : "set"}</DialogTitle>
+          <DialogTitle>Delete {sessionLogs.length > 1 ? "superset" : "set"}</DialogTitle>
           <DialogDescription>Please confirm you want to delete this set.</DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -724,6 +865,7 @@ type AddedSessionLogs = Array<
     >
   }
 >
+
 function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, startingOrder: number }) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -732,7 +874,9 @@ function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, starti
     onSuccess: () => {
       void utils.workout.getActiveWorkoutSession.invalidate()
       setDialogOpen(false)
-      toast.success("Successfully deleted the set")
+      setAddedLogs([])
+      setNumberOfSets(0)
+      toast.success("Successfully added the set.")
     }
   })
 
@@ -740,36 +884,15 @@ function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, starti
   const [numberOfSets, setNumberOfSets] = useState(0)
 
   useEffect(() => {
-    setAddedLogs(prev => {
-      const copy = prev.map(p => {
-        let newFragments = [...p.workoutSessionLogFragments]
-        if (p.workoutSessionLogFragments.length < numberOfSets) {
-          for (let i = 0; i < (numberOfSets - p.workoutSessionLogFragments.length); i++) {
-            newFragments.push({
-              weight: 0,
-              reps: 0,
-              order: p.workoutSessionLogFragments.length + i,
-              duration: 0,
-              endedAt: null,
-              startedAt: null
-            })
-          }
-        } else {
-          newFragments = newFragments.slice(0, numberOfSets)
-        }
-
-        return {
-          ...p,
-          workoutSessionLogFragments: newFragments
-        }
-      })
-
-      return copy
-    })
+    setAddedLogs(prev => (
+      prev.map(log => ({
+        ...log,
+        workoutSessionLogFragments: resizeFragments(log.workoutSessionLogFragments, numberOfSets)
+      }))
+    ))
   }, [numberOfSets])
 
   const addSessionLogs = () => {
-    console.log(addedLogs, startingOrder)
     mutate(addedLogs.map(log => {
       const { workoutSessionLogFragments, ...sessionLog } = log
       return {
@@ -779,12 +902,29 @@ function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, starti
     }))
   }
 
-  const { getExerciseName } = useExerciseName()
+  const addExercise = (exerciseId: string) => {
+    const newSessionLog: AddedSessionLogs[number] = {
+      exerciseId,
+      order: startingOrder,
+      endedAt: null,
+      startedAt: null,
+      workoutSessionId: sessionId,
+      workoutSessionLogFragments: resizeFragments([], Math.max(numberOfSets, 1))
+    }
+    setNumberOfSets(prev => Math.max(prev, 1))
+    setAddedLogs(prev => [...prev, newSessionLog])
+  }
 
   return (
     <Dialog
       open={dialogOpen}
-      onOpenChange={(open) => setDialogOpen(open)}
+      onOpenChange={(open) => {
+        if (!open) {
+          setAddedLogs([])
+          setNumberOfSets(0)
+        }
+        setDialogOpen(open)
+      }}
     >
       <DialogTrigger asChild>
         <Button size="sm">
@@ -792,26 +932,16 @@ function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, starti
           <Plus size={14} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader>
           <DialogTitle>Add set</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8">
-          {Object.keys(addedLogs).length === 0 && (
+        <div className="space-y-4">
+          {addedLogs.length === 0 ? (
             <SelectExercise
-              onSelectExercise={(newExerciseId) => {
-                const newSessionLog: AddedSessionLogs[number] = {
-                  exerciseId: newExerciseId,
-                  order: startingOrder,
-                  endedAt: null,
-                  startedAt: null,
-                  workoutSessionId: sessionId,
-                  workoutSessionLogFragments: []
-                }
-                setAddedLogs([newSessionLog])
-              }}
+              onSelectExercise={addExercise}
               button={({ onClick }) => (
                 <Button onClick={onClick} type="button" variant="ghost" className="text-xl">
                   Select exercise
@@ -819,132 +949,26 @@ function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, starti
                 </Button>
               )}
             />
+          ) : (
+            <>
+              <SessionLogsEditor
+                logs={addedLogs}
+                numberOfSets={numberOfSets}
+                setNumberOfSets={setNumberOfSets}
+                setLogs={setAddedLogs}
+              />
+
+              <SelectExercise
+                onSelectExercise={addExercise}
+                button={({ onClick }) => (
+                  <Button onClick={onClick} type="button" variant="secondary" size="sm">
+                    Add Exercise
+                    <Plus size={14} />
+                  </Button>
+                )}
+              />
+            </>
           )}
-
-          {Object.values(addedLogs
-            .reduce<Record<number, AddedSessionLogs>>((acc, curr) => {
-              if (!(curr.order in acc)) {
-                acc[curr.order] = []
-              }
-              acc[curr.order]!.push(curr)
-              return acc
-            }, {}))
-            .map((logs, index) => (
-              <div 
-                key={`${index}-edit-set`}
-                className="space-y-2"
-              >
-                {logs.map((log, logIndex) => (
-                  <div key={`${index}-${logIndex}`} className="relative">
-                    <div className="relative p-4 bg-card/20 rounded-md border">
-                      <div className="w-full flex gap-2 items-center justify-between">
-                        <div className="flex gap-2 flex-wrap">
-                          <div className="w-full md:w-fit md:min-w-60 space-y-2">
-                            <p className="text-xs text-muted-foreground">Select Exercise</p>
-      
-                            <SelectExercise
-                              onSelectExercise={(newExerciseId) => {
-                                setAddedLogs(prev => {
-                                  const copy = [...prev]
-                                  const oldLog = copy[logIndex]
-                                  if (!oldLog) return prev
-                                  copy[logIndex] = {
-                                    ...oldLog,
-                                    exerciseId: newExerciseId
-                                  }
-                                  return copy
-                                })
-                              }}
-                              button={({ onClick }) => (
-                                <Button onClick={onClick} type="button" variant="ghost" className="text-xl">
-                                  {getExerciseName(log.exerciseId)}
-                                  <ChevronDown />
-                                </Button>
-                              )}
-                            />
-                          </div>
-      
-                          <div className="flex gap-2 flex-wrap">
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground">Sets</p>
-                              <Input 
-                                value={numberOfSets} 
-                                onChange={(e) => setNumberOfSets(isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
-                                className="w-12"  
-                              />
-                            </div>
-      
-                            <IntegerSelectArray
-                              label="Reps"
-                              onSetValues={(reps) => {
-                                setAddedLogs(prev => {
-                                  const copy = [...prev]
-                                  const oldLog = copy[logIndex]
-                                  if (!oldLog) return prev
-                                  copy[logIndex] = {
-                                    ...oldLog,
-                                    workoutSessionLogFragments: oldLog.workoutSessionLogFragments
-                                      .map((f, index) => ({
-                                        ...f,
-                                        reps: reps.at(index) ?? 0
-                                      }))
-                                  }
-                                  return copy
-                                })
-                              }}
-                              numberOfSets={numberOfSets}
-                              initialValues={log.workoutSessionLogFragments.map(f => f.reps)}
-                            />
-                          </div>
-                        </div>
-      
-                        {addedLogs.length > 1 && (
-                          <Button 
-                            type="button" 
-                            onClick={() => {
-                              setAddedLogs(prev => {
-                                const copy = [...prev]
-                                copy.splice(logIndex, 1)
-                                return copy
-                              })
-                            }}
-                            size="icon" 
-                            variant="ghost" 
-                            className="size-7"
-                          >
-                            <X />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-      
-                    {logIndex !== logs.length - 1 && logs.length > 0 && (
-                      <div className="absolute -bottom-4 left-2 flex justify-center items-center">
-                        <button 
-                          className="group relative p-0 m-0" type="button" 
-                          onClick={() => {
-                            setAddedLogs(prev => {
-                              const copy = [...prev]
-                              return copy.map((log, lIndex) => {
-                                return {
-                                  ...log,
-                                  order: lIndex <= logIndex ? log.order : log.order + 1
-                                }
-                              })
-                            })
-                          }}
-                        >
-                          <Link2 className="rotate-90 text-primary opacity-100 group-hover:opacity-0 transition-all" />
-                          <X className="group-hover:opacity-100 opacity-0 absolute inset-0 transition-all text-primary" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))
-          }
         </div>
 
         <DialogFooter>
@@ -952,7 +976,7 @@ function AddSetDialog ({ sessionId, startingOrder }: { sessionId: string, starti
           <Button 
             type="button" 
             onClick={addSessionLogs}
-            disabled={isPending}
+            disabled={isPending || addedLogs.length === 0 || numberOfSets === 0}
           >
             Add set
             {isPending && <Loader2 className="animate-spin" />}

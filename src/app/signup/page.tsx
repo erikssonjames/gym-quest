@@ -1,11 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { Small } from '@/components/typography/small';
 import SignUpForm from './_components/sign-up-form';
 import { useState } from 'react';
 import VerifyEmailForm from './_components/verify-email-form';
+import { AuthShell } from '@/app/_components/auth-shell';
 
 export type SignUpPage = "sign-up-form" | "code-input"
 export type SignInData = { email: string; password: string }
@@ -19,33 +18,40 @@ export default function SignupPage() {
     setSignInData(data)
   }
 
+  const onBackToSignUp = () => {
+    setCurrentPage("sign-up-form")
+    setSignInData(undefined)
+  }
+
+  const isVerificationPage = currentPage === "code-input"
+
   return (
-    <section className='min-h-dvh w-full flex items-center justify-center'>
+    <AuthShell
+      eyebrow={isVerificationPage ? "Step 2 of 2" : "Start your quest"}
+      title={isVerificationPage ? "Confirm your email." : "Create your account."}
+      description={
+        isVerificationPage
+          ? `Enter the six-digit code we sent to ${signInData?.email ?? "your inbox"}.`
+          : "Build a training rhythm that is easier to track, share, and keep."
+      }
+      footer={
+        !isVerificationPage ? (
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/signin" className="font-semibold text-primary hover:underline">
+              Sign in
+            </Link>
+          </p>
+        ) : undefined
+      }
+    >
       {currentPage === "sign-up-form" && (
-        <Card className='md:min-w-96 border-none'>
-          <CardHeader>
-            <CardTitle>Sign up</CardTitle>
-            <CardDescription>Get started on your questing journey!</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SignUpForm
-              onSuccessfulSignUpForm={onSuccessfulSignUpForm}
-            />
-          </CardContent>
-          <CardFooter>
-            <div className='flex gap-1 items-center mt-10'>
-              <Small text="Already have an account?" className='text-muted-foreground' />
-              <Link href="/signin" className='flex items-center hover:text-accent-foreground text-primary'>
-                <Small text="Sign in." className='font-bold' />
-              </Link>
-            </div>
-          </CardFooter>
-        </Card>
+        <SignUpForm onSuccessfulSignUpForm={onSuccessfulSignUpForm} />
       )}
 
       {currentPage === "code-input" && signInData && (
-        <VerifyEmailForm data={signInData} />
+        <VerifyEmailForm data={signInData} onBack={onBackToSignUp} />
       )}
-    </section>
+    </AuthShell>
   );
 };

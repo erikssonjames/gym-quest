@@ -28,12 +28,16 @@ import { DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor
 import { SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers"
 import { useEffect } from "react";
+import { useState } from "react";
 import { useLocalStorage } from "@/hooks/use-localstorage";
 import ScrollContainerFadingEdges from "@/components/ui/scroll-container-fading-edges";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { ListChecks, Sparkles } from "lucide-react";
+import AiWorkoutChat from "./ai-workout-chat";
 
 export default function CreateWorkoutForm() {
+  const [builderMode, setBuilderMode] = useState<"manual" | "ai">("manual")
   const utils = api.useUtils()
   const router = useRouter()
   const sensors = useSensors(
@@ -150,19 +154,71 @@ export default function CreateWorkoutForm() {
         onSubmit={form.handleSubmit(onSubmitWorkout)}
         className="gap-6 flex flex-col min-h-0 h-full"
       >
-        <div className="flex gap-6 items-center md:px-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem className="flex-grow">
-                <FormControl>
-                  <FloatingLabelInput text="Workout Name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div className="flex flex-col gap-3 rounded-xl border bg-card/60 p-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Build your workout</p>
+            <p className="text-xs text-muted-foreground">
+              Start manually or use the co-pilot to shape a draft through conversation.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2" role="group" aria-label="Workout builder mode">
+              <Button
+                type="button"
+                size="sm"
+                variant={builderMode === "manual" ? "default" : "outline"}
+                aria-pressed={builderMode === "manual"}
+                onClick={() => setBuilderMode("manual")}
+              >
+                <ListChecks className="size-4" />
+                Manual
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={builderMode === "ai" ? "default" : "outline"}
+                aria-pressed={builderMode === "ai"}
+                onClick={() => setBuilderMode("ai")}
+              >
+                <Sparkles className="size-4" />
+                AI assist
+              </Button>
+            </div>
+            <Button type="submit" size="sm" disabled={isPending || builderMode === "ai"}>
+              {isPending ? <Loader2Icon className="size-4 animate-spin" /> : builderMode === "ai" ? <Sparkles className="size-4" /> : null}
+              {builderMode === "ai" ? "Waiting for AI draft" : "Create workout"}
+            </Button>
+          </div>
+        </div>
+
+        {builderMode === "ai" && (
+          <AiWorkoutChat
+            onApplyDraft={(draft) => {
+              form.reset({
+                ...draft,
+                isPublic: form.getValues("isPublic"),
+              })
+              setBuilderMode("manual")
+              toast.success("AI draft applied. Review it before creating the workout.")
+            }}
           />
+        )}
+
+        <div className="flex items-center gap-6 md:px-4">
+          {builderMode === "manual" && (
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="flex-grow">
+                  <FormControl>
+                    <FloatingLabelInput text="Workout Name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}
@@ -186,18 +242,28 @@ export default function CreateWorkoutForm() {
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem className="md:px-4">
-              <FormControl>
-                <Textarea placeholder="Description" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {builderMode === "manual" ? (
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="md:px-4">
+                <FormControl>
+                  <Textarea placeholder="Description" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 md:mx-4">
+            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-medium">AI owns the workout metadata</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">The connected assistant will propose the workout name and description after it has clarified your goal, constraints, and preferences.</p>
+            </div>
+          </div>
+        )}
 
         <div 
           className="w-full md:px-4" 
@@ -228,11 +294,6 @@ export default function CreateWorkoutForm() {
           </DndContext>
         </div>
 
-        <div className="mt-auto flex-none px-8">
-          <Button type="submit" className="w-full">
-            {isPending ? <Loader2Icon className="size-6 animate-spin" /> : "Create Workout"}
-          </Button>
-        </div>
       </form>
     </Form>
   );

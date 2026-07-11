@@ -7,6 +7,8 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { type inferRouterOutputs } from "@trpc/server";
 import { feedbackRouter } from "./routers/feedback"
 import { badgesRouter } from "./routers/badges"
+import { feedRouter } from "./routers/feed"
+import { billingRouter } from "./routers/billing"
 
 /**
  * This is the primary router for your server.
@@ -20,7 +22,9 @@ export const appRouter = createTRPCRouter({
   workout: workoutRouter,
   notification: notificationsRouter,
   feedback: feedbackRouter,
-  badges: badgesRouter
+  badges: badgesRouter,
+  feed: feedRouter,
+  billing: billingRouter
 });
 
 // export type definition of API

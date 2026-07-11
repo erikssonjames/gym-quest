@@ -115,7 +115,7 @@ export default function ActiveUsers () {
                         <AvatarFallback>{user?.username?.at(0) ?? ""}</AvatarFallback>
                       </Avatar>
                       <p className="font-semibold ms-1s">{user?.username}</p>
-                      <Timer startTime={session.startedAt} />
+                      {session.startedAt && <Timer startTime={session.startedAt} />}
                       <div className="flex-grow flex items-end justify-end gap-1">
                         <p className="size-8 hover:bg-accent cursor-pointer flex items-center justify-center rounded-md">
                           {handsAndOtherBodyPartsEmojis[HandsAndOtherBodyPartsEmojis.OK].emoji}

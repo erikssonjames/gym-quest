@@ -22,8 +22,9 @@ import { Badge } from "@/components/ui/badge";
 import { useExerciseName } from "@/hooks/use-exercise-name";
 import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/app/user/@main/_components/page-shell";
 
 interface DisplayWorkoutsProps {
   workouts?: Array<WorkoutOutput>
@@ -32,7 +33,7 @@ interface DisplayWorkoutsProps {
 
 export default function DisplayWorkouts ({ workouts, loading }: DisplayWorkoutsProps) {
   return (
-    <div className="py-4 md:py-10 grid grid-cols-1 content-start gap-2 w-full flex-grow">
+    <div className="grid w-full flex-grow grid-cols-1 content-start gap-3 py-2">
       {loading && (
         <>
           <Skeleton className="w-full h-60" />
@@ -40,26 +41,7 @@ export default function DisplayWorkouts ({ workouts, loading }: DisplayWorkoutsP
           <Skeleton className="w-full h-60" />
         </>
       )}
-      {!loading && workouts?.length === 0 && (
-        <div className="w-full h-full pt-10 flex items-center justify-center">
-          <p className="font-semibold">
-            No added
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link className="ms-1" type="button" href="/user/workouts/manage/create">
-                    <span className="underline text-primary">workouts</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Create your first!
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            .
-          </p>
-        </div>
-      )}
+      {!loading && workouts?.length === 0 && <div className="w-full"><EmptyState title="No workouts in this library" description="Create a plan for yourself or browse public workouts to find a useful starting point." action={<Button asChild><Link href="/user/workouts/manage/create">Create a workout</Link></Button>} /></div>}
       {!loading && workouts?.map(w => {
         return <WorkoutComponent key={w.id} workout={w} />
       })}
@@ -99,12 +81,13 @@ function WorkoutComponent ({ workout }: { workout: WorkoutOutput }) {
   }, [workout, getExerciseName])
 
   return (
-    <div className="bg-secondary/40 border p-4 rounded-md flex gap-2">
-      <div className="flex-grow">
+    <Card className="transition-colors hover:border-primary/40">
+      <CardContent className="flex gap-3 p-4">
+      <div className="min-w-0 flex-grow">
         <div>
           <p className="inline-block font-semibold pe-2">{workout.name}</p>
           <span className="italic text-xs">{workout.category}</span>
-          <Badge className={workout.isPublic ? "bg-primary" : "bg-destructive text-destructive-foreground"}>
+            <Badge variant={workout.isPublic ? "default" : "destructive"}>
             {workout.isPublic ? "Public" : "Private"}
           </Badge>
         </div>
@@ -129,7 +112,7 @@ function WorkoutComponent ({ workout }: { workout: WorkoutOutput }) {
           <div className="flex flex-wrap gap-1 pt-2">
             {exerciseNames.filter(name => !!name && name.length > 0).map((name, index) => (
               <div 
-                className="flex items-center justify-center w-fit px-2 py-1 rounded-sm bg-background/40" 
+                className="flex w-fit items-center justify-center rounded-sm bg-muted/60 px-2 py-1"
                 key={`${name}-${index}-exercise-name-badge`}
               >
                 <p className="text-xs whitespace-nowrap">{name}</p>
@@ -139,6 +122,9 @@ function WorkoutComponent ({ workout }: { workout: WorkoutOutput }) {
         </div>
       </div>
       <div className="px-2 flex flex-col gap-2">
+        <Button size="sm" variant="outline" asChild>
+          <Link href={`/user/workouts/browse/${workout.id}`}>View</Link>
+        </Button>
         {userId && userId === workout.userId ? (
           <>
             <EditWorkout workout={workout}>
@@ -164,7 +150,8 @@ function WorkoutComponent ({ workout }: { workout: WorkoutOutput }) {
           </Button>
         )}
       </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 

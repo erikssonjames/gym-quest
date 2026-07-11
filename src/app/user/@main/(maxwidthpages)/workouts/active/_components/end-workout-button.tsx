@@ -18,7 +18,7 @@ export default function EndWorkoutButton ({ workoutSessionId }: { workoutSession
       toast.success("Ended workout.")
 
       if (sessionId) {
-        router.push(`/user/workouts/active/${sessionId}`)
+        router.push(`/user/workouts/active/completed/${sessionId}`)
       } else {
         router.push("/user/workouts")
       }
@@ -42,14 +42,14 @@ export default function EndWorkoutButton ({ workoutSessionId }: { workoutSession
         <DialogHeader>
           <DialogTitle>Are you sure you want to end this workout?</DialogTitle>
           <DialogDescription>
-              This action cant be undone.
+            Completed sets will be saved. Planned and active sets will be left out of your results.
           </DialogDescription>
         </DialogHeader>
   
         <DialogFooter className="sm:justify-start">
           <DialogClose asChild>
             <Button type="button" variant="secondary">
-                Close
+                Keep training
             </Button>
           </DialogClose>
           <Button type="button" variant="destructive" onClick={() => mutate(workoutSessionId)} disabled={isPending}>

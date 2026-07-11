@@ -1,1 +1,0 @@
-ALTER TABLE "badge" DROP COLUMN "test";

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gym_quest
+      POSTGRES_USER: gym_quest
+      POSTGRES_PASSWORD: gym_quest_dev
+    ports:
+      - "${GYM_QUEST_DB_PORT:-55432}:5432"
+    volumes:
+      - gym_quest_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gym_quest -d gym_quest"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    stop_grace_period: 10s
+
+volumes:
+  gym_quest_postgres_data:

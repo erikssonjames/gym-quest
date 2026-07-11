@@ -16,10 +16,8 @@ import {
   waitlists, 
   friendShip, 
   friendRequest, 
-  userPrivateInformation,
-  userProfile
 } from "@/server/db/schema/user";
-import { and, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "@/lib/hash";
 import { BORDER_RADIUS_ARRAY, COLOR_THEMES_ARRAY } from "@/variables/settings";
@@ -35,17 +33,29 @@ import { UserEvents } from "@/socket/enums/user";
 import { emitServerSocketEvent } from "@/server/socket";
 import { UserNotifications } from "@/socket/enums/notifications";
 import { v2 as cloudinary, type UploadApiResponse, type UploadApiOptions } from "cloudinary"
-import type { BadgeLiteral } from "@/variables/badges";
-import { badgeProgress } from "@/server/db/schema/badges";
+import { createSocketToken } from "@/server/socket/auth";
+import { provisionUserRecords } from "@/server/services/user-provisioning";
+import { getCtxUserId } from "@/server/utils/user";
+import sharp from "sharp";
 
 type UserDetails = { email: string, password: string }
+
+const publicUserColumns = {
+  id: true,
+  createdAt: true,
+  name: true,
+  username: true,
+  image: true,
+  uploadedImage: true,
+} as const
 
 const createUserAccount = async ({
   email,
   password,
   ctx
 }: UserDetails & { ctx: TRPCContext }
-): Promise<TRPCError | UserDetails & { userId: string }> => {
+): Promise<UserDetails & { userId: string }> => {
+  email = email.trim().toLowerCase()
   const userExists = await ctx.db.query.users.findFirst({
     where: eq(users.email, email),
   });
@@ -57,90 +67,45 @@ const createUserAccount = async ({
     });
   }
 
-  const transactionResponse: string | TRPCError = await ctx.db.transaction(async (transaction) => {
-    try {
-      const newUser: NewUser = { email };
+  const transactionResponse = await ctx.db.transaction(async (transaction) => {
+    const newUser: NewUser = { email };
 
-      const createdUser = await transaction
-        .insert(users)
-        .values(newUser)
-        .returning({ id: users.id });
+    const createdUser = await transaction
+      .insert(users)
+      .values(newUser)
+      .returning({ id: users.id });
 
-      const createdUserId = createdUser[0]?.id;
-      if (!createdUserId) {
-        return new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Something went wrong creating your user account."
-        });
-      }
-
-      const newAccount: NewAccount = {
-        type: "credentials",
-        provider: "credentials",
-        providerAccountId: crypto.randomUUID(),
-        userId: createdUserId
-      };
-
-      const createdAccount = await transaction.insert(accounts).values(newAccount).returning();
-
-      if (createdAccount.length === 0) {
-        return new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Something went wrong creating your user account."
-        });
-      }
-
-      await transaction.insert(userPrivateInformation).values({
-        userId: createdUserId,
-        password,
-        role: "user"
-      })
-
-      await transaction.insert(userProfile).values({
-        userId: createdUserId
-      })
-
-      // Unlock badges for user based on number of users
-      const numUsers = await ctx.db.$count(users)
-      if (numUsers < 1000) {
-        const badges: BadgeLiteral[] = []
-        if (numUsers <= 10) {
-          badges.push({ id: "0-10th_user", weighting: 0 })
-        }
-        if (numUsers <= 50) {
-          badges.push({ id: "11-50th_user", weighting: 1 })
-        }
-        if (numUsers <= 100) {
-          badges.push({ id: "51-100th_user", weighting: 2 })
-        }
-        if (numUsers <= 500) {
-          badges.push({ id: "101-500th_user", weighting: 3 })
-        }
-        if (numUsers <= 1000) {
-          badges.push({ id: "501-1000th_user", weighting: 4 })
-        }
-
-        for (const badge of badges) {
-          await ctx.db.insert(badgeProgress).values({
-            badgeId: badge.id,
-            completed: true,
-            userId: createdUserId
-          })
-        }
-      }
-
-      return createdUserId;
-    } catch (error) {
-      return new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Database transaction failed."
+    const createdUserId = createdUser[0]?.id;
+    if (!createdUserId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Something went wrong creating your user account."
       });
     }
-  });
 
-  if (transactionResponse instanceof TRPCError) {
-    throw transactionResponse;
-  }
+    const newAccount: NewAccount = {
+      type: "credentials",
+      provider: "credentials",
+      providerAccountId: crypto.randomUUID(),
+      userId: createdUserId
+    };
+
+    const createdAccount = await transaction.insert(accounts).values(newAccount).returning();
+
+    if (createdAccount.length === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Something went wrong creating your user account."
+      });
+    }
+
+    await provisionUserRecords(transaction, createdUserId, {
+      password,
+      awardEarlyUserBadge: true,
+    })
+
+    return createdUserId;
+  });
 
   return {
     userId: transactionResponse,
@@ -172,9 +137,16 @@ function uploadBufferToCloudinary(
 }
 
 export const userRouter = createTRPCRouter({
+  getSocketToken: protectedProcedure.query(({ ctx }) => ({
+    token: createSocketToken(getCtxUserId(ctx)),
+  })),
+
   createUser: protectedProcedure
     .input(z.object({
-      username: z.string().min(3)
+      username: z.string().trim().min(3).max(20).regex(
+        /^[a-zA-Z0-9_]+$/,
+        "Use only letters, numbers, and underscores.",
+      )
     }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
@@ -193,11 +165,7 @@ export const userRouter = createTRPCRouter({
           .set({ username })
           .where(eq(users.id, userId))
 
-        const newUserSettings: NewUserSettings = { userId }
-                
-        await tx
-          .insert(userSettings)
-          .values(newUserSettings)
+        await provisionUserRecords(tx, userId)
       })
     }),
 
@@ -235,6 +203,7 @@ export const userRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await ctx.db.query.users.findFirst({
         where: eq(users.id, input),
+        columns: publicUserColumns,
       })
     }),
 
@@ -254,6 +223,7 @@ export const userRouter = createTRPCRouter({
           ne(users.id, myUserId),
           isNotNull(users.username)
         ),
+        columns: publicUserColumns,
       })
     }),
 
@@ -262,8 +232,8 @@ export const userRouter = createTRPCRouter({
       z.object({
         image: z.object({
           name: z.string(),
-          type: z.string(),
-          base64: z.string(),
+          type: z.string().regex(/^image\/(jpeg|png|webp)$/),
+          base64: z.string().max(12_000_000),
         }),
       })
     )
@@ -287,43 +257,57 @@ export const userRouter = createTRPCRouter({
         })
       }
 
-      const uploadedImage = user.uploadedImage
-
-      if (uploadedImage) {
-        await cloudinary.uploader.destroy(uploadedImage,
-          (res) => console.log("Res from destroy: ", res)
-        )
-      }
-
-      const { base64, name } = input.image
+      const { base64 } = input.image
 
       // 1) Strip off the data URL prefix if needed
-      const rawBase64 = base64.replace(/^data:\w+\/\w+;base64,/, "")
+      const rawBase64 = base64.replace(/^data:image\/(jpeg|png|webp);base64,/, "")
 
       // 2) Convert base64 -> Buffer
       const fileBuffer = Buffer.from(rawBase64, "base64")
+      if (fileBuffer.byteLength > 8 * 1024 * 1024) {
+        throw new TRPCError({
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Profile images must be smaller than 8 MB.",
+        })
+      }
+
+      let normalizedImage: Buffer
+      try {
+        normalizedImage = await sharp(fileBuffer)
+          .rotate()
+          .resize(512, 512, { fit: "cover" })
+          .webp({ quality: 85 })
+          .toBuffer()
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The uploaded file is not a valid image.",
+        })
+      }
 
       // 3) Upload to Cloudinary via our helper
       // Pass any upload options you want, for example:
-      const result = await uploadBufferToCloudinary(fileBuffer, {
+      const result = await uploadBufferToCloudinary(normalizedImage, {
         resource_type: "image",
-        folder: userId,         // store in a folder named after the user? up to you
-        public_id: name,        // optionally use the original file name as public_id
-        // You can also pass 'transformation', 'format', etc.
-        allowed_formats: ["jpg", "png", "webp"],
-        transformation: { width: 400, height: 400, crop: "limit" }
+        folder: userId,
+        public_id: "avatar",
+        format: "webp",
+        overwrite: true,
       })
 
-      if (!result?.url) {
+      if (!result?.secure_url || !result.public_id) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Upload failed" })
       }
 
       // 4) Save that URL in your database
       await ctx.db.update(users)
-        .set({ uploadedImage: result.url })
+        .set({
+          uploadedImage: result.secure_url,
+          uploadedImagePublicId: result.public_id,
+        })
         .where(eq(users.id, userId))
 
-      return result.url
+      return result.secure_url
     }),
 
   updateUserSettings: protectedProcedure
@@ -409,15 +393,12 @@ export const userRouter = createTRPCRouter({
 
       try {
         // 🔹 Create User Account
-        const createdUser = await createUserAccount({
+        await createUserAccount({
           ctx,
           email: decodedEmail,
           password: decodedHashedPassword,
         });
   
-        if (createdUser instanceof TRPCError) {
-          throw createdUser;
-        }
       } catch (error) {
         console.error("Verify Email Error:", error);
   
@@ -447,7 +428,8 @@ export const userRouter = createTRPCRouter({
         })
       }
 
-      const { email, password } = input
+      const email = input.email.trim().toLowerCase()
+      const { password } = input
       try {
         await emailLimiter.consume(email)
       } catch (rejRes) {
@@ -477,12 +459,25 @@ export const userRouter = createTRPCRouter({
 
       await ctx.db.insert(verificationQueue).values({ token, email })
 
-      const { error } = await sendVerifyEmail({ email, code })
+      try {
+        const { error } = await sendVerifyEmail({ email, code })
+        if (!error) return
 
-      if (error) {
+        console.error("Email provider rejected verification email", error)
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Could not send the email. Please try again.'
+          message: env.NODE_ENV === "development"
+            ? `Email provider rejected the message: ${error.message}`
+            : 'Could not send the email. Please try again.'
+        })
+      } catch (error) {
+        await ctx.db.delete(verificationQueue).where(eq(verificationQueue.token, token))
+
+        if (error instanceof TRPCError) throw error
+        console.error("Could not send verification email", error)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not send the email. Please try again.",
         })
       }
     }),
@@ -512,7 +507,7 @@ export const userRouter = createTRPCRouter({
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
       const foundUsers = await ctx.db.query.users.findMany({
-        where: eq(users.username, input),
+        where: sql`lower(${users.username}) = lower(${input.trim()})`,
         columns: {
           username: true
         }
@@ -538,8 +533,8 @@ export const userRouter = createTRPCRouter({
           eq(friendShip.userTwo, userId),
         ),
         with: {
-          userOneUser: true,
-          userTwoUser: true
+          userOneUser: { columns: publicUserColumns },
+          userTwoUser: { columns: publicUserColumns }
         },
       })
 
@@ -549,8 +544,8 @@ export const userRouter = createTRPCRouter({
           : friendShip.userOneUser
         
         return {
-          createdAt: friendShip.createdAt,
-          ...friend
+          ...friend,
+          friendSince: friendShip.createdAt,
         }
       })
     }),
@@ -576,8 +571,8 @@ export const userRouter = createTRPCRouter({
           eq(friendRequest.ignored, false)
         ),
         with: {
-          fromUser: true,
-          toUser: true
+          fromUser: { columns: publicUserColumns },
+          toUser: { columns: publicUserColumns }
         }
       })
 
@@ -606,14 +601,27 @@ export const userRouter = createTRPCRouter({
         })
       }
 
+      if (myUserId === toUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You cannot send a friend request to yourself."
+        })
+      }
+
       const existingPendingRequest = await ctx.db.query.friendRequest.findFirst({
         where: and(
           or(
-            inArray(friendRequest.toUserId, [myUserId, toUserId]),
-            inArray(friendRequest.fromUserId, [myUserId, toUserId])
+            and(
+              eq(friendRequest.fromUserId, myUserId),
+              eq(friendRequest.toUserId, toUserId)
+            ),
+            and(
+              eq(friendRequest.fromUserId, toUserId),
+              eq(friendRequest.toUserId, myUserId)
+            )
           ),
-          ne(friendRequest.accepted, true),
-          ne(friendRequest.ignored, true)
+          eq(friendRequest.accepted, false),
+          eq(friendRequest.ignored, false)
         )
       })
 
@@ -669,14 +677,21 @@ export const userRouter = createTRPCRouter({
         })
       }
 
-      await ctx.db.insert(friendShip).values({
-        userOne: activeFriendRequest.toUserId,
-        userTwo: activeFriendRequest.fromUserId
-      })
+      const updatedFriendRequest = await ctx.db.transaction(async (tx) => {
+        await tx.insert(friendShip).values({
+          userOne: activeFriendRequest.toUserId,
+          userTwo: activeFriendRequest.fromUserId
+        }).onConflictDoNothing()
 
-      const updatedFriendRequest = (await ctx.db.update(friendRequest).set({
-        accepted: true
-      }).where(eq(friendRequest.id, activeFriendRequest.id)).returning()).at(0)
+        return (await tx.update(friendRequest).set({
+          accepted: true
+        }).where(and(
+          eq(friendRequest.id, activeFriendRequest.id),
+          eq(friendRequest.toUserId, myUserId),
+          eq(friendRequest.accepted, false),
+          eq(friendRequest.ignored, false),
+        )).returning()).at(0)
+      })
 
       if (updatedFriendRequest) {
         await createAddedFriendRequestNotification(ctx, updatedFriendRequest)

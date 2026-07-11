@@ -5,8 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "dev": "tsx server.ts",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/server/db/seed.ts",
+    "db:setup": "npm run db:up && npm run db:migrate && npm run db:seed",
+    "db:up": "docker compose up -d --wait postgres",
+    "dev": "tsx --env-file=.env server.ts",
     "lint": "next lint",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "start": "NODE_ENV=production tsx server.ts"
   },
   "dependencies": {
@@ -22,6 +29,7 @@
     "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-popover": "^1.1.4",
+    "@radix-ui/react-progress": "^1.1.12",
     "@radix-ui/react-radio-group": "^1.2.0",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-select": "^2.1.4",
@@ -77,6 +85,7 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.2",
+    "stripe": "^22.3.1",
     "superjson": "^2.2.1",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",

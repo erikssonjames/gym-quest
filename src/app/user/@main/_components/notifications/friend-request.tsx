@@ -19,12 +19,14 @@ function FriendRequest ({ notification }: FriendRequestProps) {
     onSuccess: () => {
       void utils.user.getFriends.invalidate()
       void utils.user.getUsers.invalidate()
+      void utils.user.getFriendRequests.invalidate()
       void utils.notification.getNotifications.invalidate()
     }
   })
   const { mutate: ignoreFriendRequest, isPending: ignoreFriendRequestPending } = api.user.ignoreFriendRequest.useMutation({
     onSuccess: () => {
       void utils.user.getUsers.invalidate()
+      void utils.user.getFriendRequests.invalidate()
       void utils.notification.getNotifications.invalidate()
     }
   })

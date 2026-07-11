@@ -29,7 +29,7 @@ export default function Header () {
   
   return (
     <div className="w-full bg-card/20 rounded-3xl overflow-hidden shadow-sm border">
-      <div className="h-60 bg-gradient-to-bl from-primary via-violet-400 to-violet-600 w-full" />
+      <div className="h-60 w-full bg-gradient-to-bl from-primary/80 via-primary/40 to-accent" />
 
       <div className="flex flex-col bg-card p-4">
         <div className="ml-5 w-fit relative">
@@ -44,9 +44,9 @@ export default function Header () {
               <p className="text-lg font-bold">{user?.username}</p>
               {isMyProfilePage && <SelectBadge />}
             </div>
-            {user?.emailVerified && (
+            {user?.createdAt && (
               <p className="text-muted-foreground text-xs mt-2">
-                Joined {lightFormat(user.emailVerified, "yyyy-MM-dd")}
+                Joined {lightFormat(user.createdAt, "yyyy-MM-dd")}
               </p>
             )}
           </div>
@@ -313,18 +313,55 @@ async function fileToBase64(file: File): Promise<string> {
 
 function AddFriendButton () {
   const userId = useUserId()
+  const utils = api.useUtils()
   const { data: friends } = api.user.getFriends.useQuery()
+  const { data: requests } = api.user.getFriendRequests.useQuery()
   const isFriend = friends?.some(friend => friend.id === userId)
+  const incoming = requests?.incoming.find(request => request.fromUserId === userId)
+  const outgoing = requests?.outgoing.some(request => request.toUserId === userId)
+  const invalidate = () => {
+    void utils.user.getFriends.invalidate()
+    void utils.user.getFriendRequests.invalidate()
+    void utils.user.getUsers.invalidate()
+  }
+  const { mutate: sendRequest, isPending: sending } = api.user.sendFriendRequest.useMutation({
+    onSuccess: invalidate,
+  })
+  const { mutate: acceptRequest, isPending: accepting } = api.user.acceptFriendRequest.useMutation({
+    onSuccess: invalidate,
+  })
+  const { mutate: removeFriend, isPending: removing } = api.user.removeFriend.useMutation({
+    onSuccess: invalidate,
+  })
+  const pending = sending || accepting || removing
 
   return (
     <div>
       {isFriend ? (
-        <Button className="" variant="destructive">
+        <Button
+          variant="destructive"
+          disabled={pending}
+          onClick={() => removeFriend(userId)}
+        >
           Remove Friend
+          {removing && <Loader2 className="animate-spin" />}
+        </Button>
+      ) : incoming ? (
+        <Button
+          disabled={pending}
+          onClick={() => acceptRequest({ friendRequestId: incoming.id })}
+        >
+          Accept Request
+          {accepting && <Loader2 className="animate-spin" />}
+        </Button>
+      ) : outgoing ? (
+        <Button variant="outline" disabled>
+          Request Sent
         </Button>
       ) : (
-        <Button className="">
+        <Button disabled={pending} onClick={() => sendRequest(userId)}>
           Send Friend Request
+          {sending && <Loader2 className="animate-spin" />}
         </Button>
       )}
     </div>

@@ -8,6 +8,14 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+const publicUserColumns = {
+  id: true,
+  name: true,
+  username: true,
+  image: true,
+  uploadedImage: true,
+} as const
+
 export const notificationsRouter = createTRPCRouter({
   getNotifications: protectedProcedure
     .query(async ({ ctx }) => {
@@ -30,7 +38,7 @@ export const notificationsRouter = createTRPCRouter({
             with: {
               friendRequest: {
                 with: {
-                  fromUser: true
+                  fromUser: { columns: publicUserColumns }
                 }
               }
             }
@@ -39,7 +47,8 @@ export const notificationsRouter = createTRPCRouter({
             with: {
               workoutReview: {
                 with: {
-                  workout: true
+                  workout: true,
+                  user: { columns: publicUserColumns },
                 }
               }
             }

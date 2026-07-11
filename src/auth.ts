@@ -5,7 +5,6 @@ import authConfig from "./auth.config";
 import {
   accounts,
   sessions,
-  userPrivateInformation,
   users,
   verificationTokens,
 } from "@/server/db/schema/user";
@@ -14,6 +13,7 @@ import { encode, decode } from 'next-auth/jwt'
 import { type Adapter } from "next-auth/adapters";
 import { createCookie, getCookieValue } from "@/app/lib/actions";
 import { eq } from "drizzle-orm";
+import { provisionUserRecords } from "@/server/services/user-provisioning";
 
 const fromDate = (time: number, date: number = Date.now()) => {
   return new Date(date + time * 1000)
@@ -129,9 +129,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth(req => {
       createUser: async (data) => {
         const { id } = data.user
         if (!id) return
-        await db.insert(userPrivateInformation).values({
-          userId: id,
-          role: "user"
+        await db.transaction(async (tx) => {
+          await provisionUserRecords(tx, id, {
+            awardEarlyUserBadge: true,
+          })
         })
       }
     },

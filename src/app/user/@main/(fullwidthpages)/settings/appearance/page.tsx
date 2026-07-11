@@ -20,11 +20,11 @@ function UIColorExample ({ onClick, theme }: { onClick: () => void, theme: COLOR
       onClick={onClick}
     >
       <div className="w-full min-w-60 h-full flex flex-col">
-        <div className="w-full bg-black/40 h-6 rounded-t-md border-b">
+        <div className="h-6 w-full rounded-t-md border-b bg-muted/70">
           <div className="flex gap-1 items-center h-full ps-2">
-            <div className="bg-red-400 size-2 rounded-full" />
-            <div className="bg-yellow-400 size-2 rounded-full" />
-            <div className="bg-green-400 size-2 rounded-full" />
+            <div className="size-2 rounded-full bg-destructive" />
+            <div className="size-2 rounded-full bg-primary/70" />
+            <div className="size-2 rounded-full bg-primary" />
           </div>
         </div>
         <div className="flex h-full">
@@ -81,7 +81,7 @@ export default function AppearanceSettings () {
               <div 
                 key={`color-palette-${theme}`} 
                 className={cn(
-                  "flex flex-col rounded-lg border shadow-md bg-gray-800/20",
+                  "flex flex-col rounded-lg border bg-muted/20 shadow-md",
                   colorTheme === theme && "border-primary"
                 )}
               >

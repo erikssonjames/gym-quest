@@ -1,4 +1,4 @@
-import { boolean, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { muscle } from "./body";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -8,10 +8,14 @@ export const exercise = pgTable("exercise", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  isPublic: boolean("isPublic"),
+  isPublic: boolean("isPublic").default(false).notNull(),
+  archivedAt: timestamp("archivedAt", { mode: "date", withTimezone: true }),
   userId: uuid("userId")
     .references(() => users.id, { onDelete: "set null" })
-})
+}, (t) => [
+  index("exercise_owner_active_idx").on(t.userId, t.archivedAt),
+  index("exercise_public_active_idx").on(t.isPublic, t.archivedAt),
+])
 
 export const exercisePublicRequest = pgTable("exercisePublicRequest", {
   id: uuid("id").defaultRandom().primaryKey(),

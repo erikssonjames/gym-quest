@@ -149,8 +149,7 @@ function IntegerSelectArray(
 
   const onSetValuesCallback = useCallback((arr: number[]) => {
     onSetValues(arr);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onSetValues]);
 
   const onInputChange = useCallback((val: string, index: number) => {
     let copyValues = []
@@ -193,12 +192,6 @@ function IntegerSelectArray(
   useEffect(() => {
     if (numberOfSets <= 1 || numberOfSets > 10) setSplitValues(false)
   }, [numberOfSets])
-
-  useEffect(() => {
-    if (internalValues.length > 0) {
-      onSetValuesCallback(internalValues);
-    }
-  }, [internalValues, onSetValuesCallback]);
 
   return (
     <div className="space-y-2">

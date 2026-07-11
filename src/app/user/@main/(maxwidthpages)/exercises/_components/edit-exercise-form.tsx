@@ -87,7 +87,7 @@ export default function EditExerciseForm(
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input placeholder="Workout Name" className="py-6" {...field} />
+                <Input placeholder="Exercise name" className="py-6" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -120,7 +120,14 @@ export default function EditExerciseForm(
               return (
                 <div key={muscleId} className="flex justify-between items-center pe-1 ps-3 py-1 rounded-sm hover:bg-background/20">
                   <p className="text-sm">{idx + 1} - {muscle.name}</p>
-                  <Button size="icon" variant="destructive" className="size-7" type="button">
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="size-7"
+                    type="button"
+                    onClick={() => handleAddMuscleId(muscleId)}
+                    aria-label={`Remove ${muscle.name}`}
+                  >
                     <Trash />
                   </Button>
                 </div>

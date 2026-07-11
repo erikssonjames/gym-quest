@@ -1,4 +1,4 @@
-import { boolean, pgTable, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, timestamp, uuid } from "drizzle-orm/pg-core";
 import { friendRequest, users } from "./user";
 import { workoutReview } from "./workout";
 
@@ -6,11 +6,14 @@ export const notification = pgTable("notification", {
   id: uuid("id").defaultRandom().primaryKey(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   readAt: timestamp("readAt"),
-  hidden: boolean("hidden").default(false),
+  hidden: boolean("hidden").default(false).notNull(),
   userId: uuid("userId")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull()
-})
+}, (t) => [
+  index("notification_user_created_idx").on(t.userId, t.createdAt),
+  index("notification_user_hidden_idx").on(t.userId, t.hidden),
+])
 
 export const friendRequestNotification = pgTable("friendRequestNotification", {
   notificationId: uuid("notificationId")

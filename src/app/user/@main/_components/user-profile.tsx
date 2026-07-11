@@ -1,6 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent } from "@/components/ui/card"
 import { api } from "@/trpc/react"
 import {
   Dialog,
@@ -22,24 +23,33 @@ export default function UserProfile () {
   const { data: user } = api.user.getMe.useQuery()
   
   return (
-    <div className="w-full rounded-3xl overflow-hidden shadow-sm border">
-      <div className="h-28 bg-gradient-to-bl from-primary via-violet-400 to-violet-600 w-full" />
+    <Card className="w-full overflow-hidden border-border/70 bg-card/90 shadow-sm">
+      <div className="relative h-28 w-full overflow-hidden bg-primary">
+        <div className="pointer-events-none absolute -right-12 -top-16 size-44 rounded-full border border-primary-foreground/15" />
+        <div className="pointer-events-none absolute -bottom-24 -left-12 size-52 rounded-full border border-primary-foreground/15" />
+        <p className="absolute bottom-4 left-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground/70">
+          Your training base
+        </p>
+      </div>
 
-      <div className="flex flex-col bg-card p-4">
-        <div className="ml-2 w-fit relative">
-          <div className="absolute -top-14 p-0 m-0 left-0 border-card border-4 rounded-full size-20">
+      <CardContent className="flex flex-col gap-4 p-5">
+        <div className="relative ml-1 w-fit">
+          <div className="absolute -top-16 left-0 size-20 rounded-full border-4 border-card bg-card">
             <UserProfilePicture />
           </div>
-          <div className="h-7" />
+          <div className="h-4" />
         </div>
-        <div className="ml-2 mt-2 flex items-center justify-between">
-          <div className="flex gap-4 items-center">
-            <p className="text-lg font-bold">{user?.username}</p>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-lg font-semibold">{user?.username ?? "Your username"}</p>
+              <p className="text-sm text-muted-foreground">Keep building your quest log.</p>
+            </div>
             <SelectBadge />
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 

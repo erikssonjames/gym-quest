@@ -135,7 +135,7 @@ export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
 
   const role = privateInformation?.role
 
-  if (!role || role !== "admin") {
+  if (!role || !["admin", "superAdmin"].includes(role)) {
     throw new TRPCError({ code: "UNAUTHORIZED" })
   }
 

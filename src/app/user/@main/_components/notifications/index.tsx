@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import IntersectionContainer from "./intersection-container";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce } from "@uidotdev/usehooks";
+import WorkoutReview from "./workout-review";
 
 export default function Notifications () {
   const utils = api.useUtils()
@@ -43,6 +44,10 @@ export default function Notifications () {
     if (notification.friendRequest) {
       return <FriendRequest notification={notification} />
     }
+    if (notification.workoutReview) {
+      return <WorkoutReview notification={notification} />
+    }
+    return null
   }
 
   const [readNotifications, setReadNotifications] = useState<Array<string>>([])

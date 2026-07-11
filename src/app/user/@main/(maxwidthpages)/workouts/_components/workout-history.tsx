@@ -1,6 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,14 +26,11 @@ export default function WorkoutHistory () {
   const hasSessions = workoutSessions && workoutSessions.length > 0
 
   return (
-    <div className="w-full max-h-96 bg-card border px-6 py-5 rounded-md">
+    <Card className="w-full">
       {hasSessions && (
-        <p className="font-semibold text-md">Workout History</p>
+        <CardHeader className="p-5"><CardTitle className="text-lg">Recent history</CardTitle></CardHeader>
       )}
-      <div className={cn(
-        "space-y-2",
-        hasSessions && "mt-4"
-      )}>
+      <CardContent className={cn("space-y-2 p-5", hasSessions && "pt-0")}>
         {workoutSessions?.map((workoutSession, index) => (
           <WorkoutSessionComponent
             even={index % 2 === 0}
@@ -41,12 +39,10 @@ export default function WorkoutHistory () {
           />
         ))}
         {!hasSessions && (
-          <div className="w-full h-20 flex justify-center items-center">
-            <p className="text-base text-muted-foreground">No workouts completed yet.</p>
-          </div>
+          <div className="flex min-h-24 flex-col items-center justify-center gap-2 text-center"><p className="font-medium">No workouts completed yet.</p><p className="text-sm text-muted-foreground">Your finished sessions will become a record you can return to.</p></div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -59,8 +55,8 @@ function WorkoutSessionComponent (
   return (
     <div
       className={cn(
-        "flex gap-10 py-2 px-3 rounded-sm justify-between items-center cursor-pointer",
-        even ? "bg-secondary" : ""
+        "flex cursor-pointer flex-col gap-3 rounded-lg border p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between",
+        even ? "bg-muted/20" : "bg-card"
       )}
       onClick={() => {
         router.push(`/user/workouts/active/completed/${workoutSession.id}`)
@@ -69,11 +65,11 @@ function WorkoutSessionComponent (
       <div className="flex gap-x-10 gap-y-4 flex-wrap">
         <div>
           <p className="text-muted-foreground text-xs">Workout</p>
-          <p>{workoutSession.workout.name}</p>
+          <p>{workoutSession.workout?.name ?? "Empty workout"}</p>
         </div>
         <div>
           <p className="text-muted-foreground text-xs">Duration</p>
-          {workoutSession.endedAt ? (
+          {workoutSession.startedAt && workoutSession.endedAt ? (
             <p>{formatDistanceStrict(workoutSession.startedAt, workoutSession.endedAt)}</p>
           ) : (
             <Badge>Active</Badge>
@@ -81,7 +77,7 @@ function WorkoutSessionComponent (
         </div>
         <div>
           <p className="text-muted-foreground text-xs">Date</p>
-          {workoutSession.endedAt ? (
+          {workoutSession.startedAt && workoutSession.endedAt ? (
             <p>{formatISO(workoutSession.startedAt, { representation: "date" })}</p>
           ) : (
             <Badge>Active</Badge>

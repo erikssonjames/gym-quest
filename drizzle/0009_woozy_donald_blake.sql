@@ -1,1 +1,0 @@
-ALTER TABLE "workoutSetCollection" ALTER COLUMN "order" SET NOT NULL;

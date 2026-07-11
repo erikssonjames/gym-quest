@@ -8,10 +8,19 @@ import { useNotificationSocketEventHandlers } from "./event-handlers/notificatio
 import { useUserSocketEventHandlers } from "./event-handlers/user";
 import { useWorkoutSocketEventHandlers } from "./event-handlers/workout";
 import type { WorkoutSocketEventPayloads } from "@/socket/types/workout";
+import { api } from "@/trpc/react";
 
 export default function SocketEventListener() {
   const { data: sessionData } = useSession();
   const myUserId = sessionData?.user.id;
+  const { data: socketCredentials } = api.user.getSocketToken.useQuery(
+    undefined,
+    {
+      enabled: Boolean(myUserId),
+      staleTime: 8 * 60 * 1000,
+      refetchInterval: 8 * 60 * 1000,
+    },
+  );
 
   // Memoize the handlers so they don't change on every render
   const { userNotificationFunctionsMap, workoutNotificationFunctionsMap } =
@@ -22,12 +31,12 @@ export default function SocketEventListener() {
   const socketRef = useRef<Socket>();
 
   useEffect(() => {
-    if (!myUserId) return;
+    if (!myUserId || !socketCredentials?.token) return;
 
     // Only create the socket if it hasn't been created yet
     if (!socketRef.current) {
       socketRef.current = io({
-        auth: { userId: myUserId },
+        auth: { token: socketCredentials.token },
       });
     }
 
@@ -62,9 +71,11 @@ export default function SocketEventListener() {
     return () => {
       socket.off("connect", handleConnect);
       socket.offAny(handleAny);
+      socket.disconnect();
+      socketRef.current = undefined;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myUserId]); // Only depend on myUserId
+  }, [myUserId, socketCredentials?.token]);
 
   return null;
 }

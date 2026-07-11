@@ -5,15 +5,17 @@ import { Button } from "@/components/ui/button"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { api } from "@/trpc/react"
 import { Loader2, X } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { EmptyState } from "@/app/user/@main/_components/page-shell"
 
 export default function OutgoingRequestsPage () {
   const { data: friendRequests } = api.user.getFriendRequests.useQuery()
 
   return (
-    <div className="pt-6">
+    <div className="space-y-3">
       {friendRequests?.outgoing.map(req => (
-        <div key={req.id} className="w-full group hover:bg-accent/40 p-1 rounded-md relative">
-          <div className="flex gap-4 items-center">
+        <Card key={req.id} className="transition-colors hover:border-primary/40"><CardContent className="flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-4">
             <Avatar className="size-7 text-xs">{}
               <AvatarImage src={req.toUser.uploadedImage ?? req.toUser.image ?? ""} />
               <AvatarFallback>{req.toUser.username?.at(0) ?? ""}</AvatarFallback>
@@ -21,16 +23,14 @@ export default function OutgoingRequestsPage () {
             <p className="font-semibold">{req.toUser.username}</p>
           </div>
 
-          <div className="absolute right-0 top-0 bottom-0 h-full flex items-center">
+          <div className="flex items-center">
             <FriendRequestControls friendRequestId={req.id} />
           </div>
-        </div>
+        </CardContent></Card>
       ))}
 
       {friendRequests?.outgoing?.length === 0 && (
-        <div className="w-full flex items-center justify-center pt-10">
-          <p className="text-muted-foreground font-semibold">No outgoing requests found!</p>
-        </div>
+        <EmptyState title="No outgoing requests" description="Requests you send will stay here until they are accepted, ignored, or cancelled." />
       )}
     </div>
   )

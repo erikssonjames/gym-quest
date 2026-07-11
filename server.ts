@@ -4,6 +4,7 @@ import { createServer } from "http"
 import { parse } from "url";
 import cron from "node-cron"
 import { updateBadgeStatisticsCronJob } from "./cron-jobs/update-badge-statistics"
+import { verifySocketToken } from "./src/server/socket/auth"
 
 const dev = process.env.NODE_ENV !== "production";
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -56,28 +57,34 @@ app.prepare().then(async () => {
 
   global.socketServer = new Server(server, {
     cors: {
-      origin: ["http://localhost:4000", "https://gymquest.com", "gym-quest.onrender.com", "www.qymquest.net" ],
+      origin: dev
+        ? ["http://localhost:4000"]
+        : ["https://gymquest.com", "https://www.gymquest.net", "https://gym-quest.onrender.com"],
       methods: ["GET", "POST"],
+    }
+  })
+
+  global.socketServer.use((socket, next) => {
+    const token = (socket.handshake.auth as { token?: unknown }).token
+    if (typeof token !== "string") {
+      next(new Error("Unauthorized"))
+      return
+    }
+
+    try {
+      socket.data.userId = verifySocketToken(token)
+      next()
+    } catch {
+      next(new Error("Unauthorized"))
     }
   })
 
   global.socketServer.on("connection", (socket) => {
     console.log("✅ Socket connected:", socket.id);
 
-    const { userId } = socket.handshake.auth as {
-      userId?: string;
-    };
-
-    if (userId) {
-      socket.data
-      socket.data.userId = userId;
-      void socket.join(userId);
-      console.log(`Socket ${socket.id} joined room: ${userId}`);
-    } else {
-      console.log("User ID not provided, disconnecting socket.");
-      socket.disconnect();
-      return;
-    }
+    const userId = socket.data.userId
+    void socket.join(userId);
+    console.log(`Socket ${socket.id} joined room: ${userId}`);
 
     socket.onAny((event, args) => {
       if (dev) console.log(`Event: ${event}, args: ${JSON.stringify(args)}`)

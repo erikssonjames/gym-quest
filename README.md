@@ -15,6 +15,72 @@ If you are not familiar with the different technologies used in this project, pl
 - [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
 
+## Local database
+
+Gym Quest includes an isolated PostgreSQL 16 service in `compose.yaml`. It
+binds to host port `55432`, so it can run alongside projects using the
+standard PostgreSQL port.
+
+1. Copy `.env.example` to `.env` and fill in the non-database secrets.
+2. Start PostgreSQL, apply migrations, and load development data:
+
+```bash
+npm run db:setup
+```
+
+3. Start the application:
+
+```bash
+npm run dev
+```
+
+Local signup uses `EMAIL_DELIVERY_MODE="console"`. Verification codes are
+printed in the development server terminal instead of being sent externally.
+Set the mode to `resend` and configure `EMAIL_FROM` with an address on a
+verified Resend domain when testing real delivery or deploying.
+
+Useful database commands:
+
+```bash
+npm run db:up       # Start this project's PostgreSQL service
+npm run db:down     # Stop it without deleting its data
+npm run db:migrate  # Apply pending Drizzle migrations
+npm run db:seed     # Idempotently load default development data
+npm run db:logs     # Follow PostgreSQL logs
+```
+
+The default connection is:
+
+```env
+DATABASE_URL="postgres://gym_quest:gym_quest_dev@localhost:55432/gym_quest"
+DATABASE_SSL="false"
+```
+
+Set `GYM_QUEST_DB_PORT` before running Compose to use another host port.
+Hosted PostgreSQL connections can still replace `DATABASE_URL` and set
+`DATABASE_SSL` to `true` or `require`.
+
+## AI and subscriptions
+
+The workout planner calls Gemini only from the backend. Keep `GEMINI_API_KEY`
+server-only and never expose it through a `NEXT_PUBLIC_` variable. The default
+free model is `gemini-2.5-flash-lite`; Pro uses `GEMINI_ADVANCED_MODEL` and a
+larger monthly allowance.
+
+To enable subscriptions:
+
+1. Create a Stripe Pro product with monthly and annual recurring prices.
+2. Put the product and price IDs in the Stripe variables in `.env` and set
+   the matching currency and amounts in minor units.
+3. Configure a Stripe webhook at `/api/stripe/webhook` for checkout completion,
+   subscription lifecycle, and invoice paid/failed events.
+4. Apply the billing migration with `npm run db:migrate`.
+
+The app stores subscription state, idempotent webhook events, AI token usage,
+estimated Gemini cost, and an owner revenue ledger in PostgreSQL. Stripe is the
+payment source of truth; the ledger is the reconciliation layer for tax, fees,
+refunds, and future payout reporting.
+
 ## Learn More
 
 To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:

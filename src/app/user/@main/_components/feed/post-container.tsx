@@ -1,13 +1,17 @@
 import type { ReactNode } from "react"
 
+import { Card } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
+
 interface PostContainerProps {
   children: ReactNode
+  className?: string
 }
 
-export default function PostContainer ({ children }: PostContainerProps) {
+export default function PostContainer ({ children, className }: PostContainerProps) {
   return (
-    <div className="bg-card border rounded-3xl p-8">
+    <Card className={cn("overflow-hidden", className)}>
       {children}
-    </div>
+    </Card>
   )
 }

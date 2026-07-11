@@ -9,17 +9,19 @@ import { Button } from "@/components/ui/button"
 import { type Badge } from "@/server/db/schema/badges"
 import EditBadgeDialog from "../_components/edit-badge-dialog"
 import ConfirmDeleteBadgeDialog from "../_components/confirm-delete-badge-dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageShell } from "@/app/user/@main/_components/page-shell"
 
 export default function BadgesPage () {
   const { data: badges } = api.badges.getBadges.useQuery()
 
   return (
-    <div className="space-y-4 pb-10">
+    <PageShell eyebrow="Admin" title="Badge studio" description="Create, tune, and preview the milestones users see in their achievement gallery." actions={<CreateBadgeDialog badgeGroupName="weight_lifting" badge={BADGE_GROUPS[0]!.badges[0]!} button={<Button><Plus />Create badge</Button>} />}>
       {BADGE_GROUPS.map(badgeGroup => (
-        <div className="border p-4 rounded-md" key={badgeGroup.id}>
-          <p className="pb-4 text-lg font-bold">{badgeGroup.id}</p>
+        <Card key={badgeGroup.id}>
+          <CardHeader><CardTitle className="capitalize">{badgeGroup.id.replaceAll("_", " ")}</CardTitle></CardHeader>
 
-          <div className="space-y-2">
+          <CardContent className="space-y-2">
             {badgeGroup.badges.map(badge => {
               const foundBadge = badges?.find(b => b.id === badge.id)
 
@@ -36,20 +38,20 @@ export default function BadgesPage () {
                 />
               )
             })}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
-    </div>
+    </PageShell>
   )
 }
 
 function MissingBadge ({ badge, badgeGroupName }: { badge: BadgeLiteral, badgeGroupName: BadgeGroupName }) {
   return (
-    <div className="flex gap-2 items-center">
-      <p>Missing badge</p>
-      <p className="py-2 px-4 text-sm font-semibold rounded-full bg-slate-400/20">{badge.id}</p>
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3">
+      <p className="text-sm text-muted-foreground">Missing badge definition</p>
+      <p className="rounded-full bg-muted px-3 py-1 text-sm font-semibold">{badge.id}</p>
 
-      <div className="ml-10">
+      <div className="ms-auto">
         <CreateBadgeDialog
           badgeGroupName={badgeGroupName}
           badge={badge}
@@ -69,7 +71,7 @@ function ExistingBadge (
   { badge, badgeGroupName, foundBadge }: { badge: BadgeLiteral, badgeGroupName: BadgeGroupName, foundBadge: Badge }
 ) {
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
       <div className="w-40">
         <BadgeComponent 
           key={badge.id}
@@ -77,11 +79,10 @@ function ExistingBadge (
         />
       </div>
 
-      <p>{foundBadge.valueName}</p>
-      <p>{foundBadge.valueDescription}</p>
-      <p>{foundBadge.valueToComplete}</p>
+      <div className="min-w-32"><p className="text-xs text-muted-foreground">Requirement</p><p className="text-sm">{foundBadge.valueToComplete} {foundBadge.valueName}</p></div>
+      <p className="min-w-48 flex-1 text-sm text-muted-foreground">{foundBadge.valueDescription}</p>
 
-      <div className="flex gap-2 items-center ml-10">
+      <div className="ms-auto flex items-center gap-2">
         <EditBadgeDialog
           button={(
             <Button size="sm">

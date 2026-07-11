@@ -1,81 +1,158 @@
 'use client'
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { api } from "@/trpc/react"
+import { Check, Loader2Icon } from "lucide-react"
 import { useDebounce } from "@uidotdev/usehooks"
-import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
-export default function Create () {
+import { AuthShell } from "@/app/_components/auth-shell"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { api } from "@/trpc/react"
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]+$/
+
+export default function Create() {
   const router = useRouter()
-  const { mutateAsync: createUser, isPending: creatingUserPending } = api.user.createUser.useMutation({
-    onSuccess: () => router.refresh()
-  })
-  const { mutate: checkUsername, isPending, data } = api.user.checkIfUsernameIsAvailable.useMutation()
-
   const [username, setUsername] = useState("")
-  const debouncedUsername = useDebounce(username, 500)
+  const normalizedUsername = username.trim()
+  const debouncedUsername = useDebounce(normalizedUsername, 500)
 
-  const onCreateUser = async () => {
-    await createUser({ username })
-
-    toast.success('Success!', {
-      description: 'Successfully created your user account at Gym Quest. Lets get started!'
-    })
-  }
+  const { mutateAsync: createUser, isPending: creatingUser } = api.user.createUser.useMutation()
+  const {
+    mutate: checkUsername,
+    isPending: checkingUsername,
+    data: usernameCheck,
+  } = api.user.checkIfUsernameIsAvailable.useMutation()
 
   useEffect(() => {
-    if (debouncedUsername.length > 2) checkUsername(debouncedUsername)
-  }, [debouncedUsername, checkUsername])
+    if (
+      debouncedUsername.length < 3 ||
+      !USERNAME_PATTERN.test(debouncedUsername)
+    ) {
+      return
+    }
+
+    checkUsername(debouncedUsername)
+  }, [checkUsername, debouncedUsername])
+
+  const usernameError =
+    normalizedUsername.length > 0 && normalizedUsername.length < 3
+      ? "Use at least 3 characters."
+      : normalizedUsername.length > 0 && !USERNAME_PATTERN.test(normalizedUsername)
+        ? "Use only letters, numbers, and underscores."
+        : usernameCheck?.username === normalizedUsername && !usernameCheck.available
+          ? "That username is already taken."
+          : null
+
+  const usernameIsAvailable =
+    normalizedUsername.length >= 3 &&
+    USERNAME_PATTERN.test(normalizedUsername) &&
+    usernameCheck?.username === normalizedUsername &&
+    usernameCheck.available
+
+  const onCreateUser = async () => {
+    if (!usernameIsAvailable || creatingUser) return
+
+    try {
+      await createUser({ username: normalizedUsername })
+      toast.success("Your profile is ready", {
+        description: "Welcome to GymQuest. Let's get your first quest moving.",
+      })
+      router.replace("/user")
+      router.refresh()
+    } catch (error) {
+      toast.error("Could not create your profile", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      })
+    }
+  }
 
   return (
-    <section className="w-screen h-dvh flex items-center justify-center">
-      <div className="flex gap-10 flex-col min-w-96 relative">
-        <div>
-          <h1 className="font-semibold text-xl">Welcome!</h1>
-          <p className="text-muted-foreground text-sm">Seems like this is your first visit.</p>
-        </div>
-
-        <div className="space-y-2">
+    <AuthShell
+      eyebrow="First step"
+      title="Choose your quest name."
+      description="This is how people in GymQuest will recognize you. Pick something that feels like you."
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          You can update your profile details later in settings.
+        </p>
+      }
+    >
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void onCreateUser()
+        }}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="username">Username</Label>
+            <span className="text-xs text-muted-foreground">3-20 characters</span>
+          </div>
           <div className="relative">
             <Input
-              disabled={creatingUserPending}
-              placeholder="Choose a username"
+              id="username"
+              autoComplete="username"
+              placeholder="GymQuester"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(event) => setUsername(event.target.value)}
+              aria-invalid={Boolean(usernameError)}
+              className="pe-10"
+              disabled={creatingUser}
             />
-            {isPending && (
-              <div className="absolute right-2 top-0 h-full flex items-center">
-                <Loader2 className="animate-spin size-4 text-primary" />
-              </div>
+            {checkingUsername && (
+              <Loader2Icon
+                className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary"
+                aria-label="Checking username availability"
+              />
+            )}
+            {!checkingUsername && usernameIsAvailable && (
+              <Check
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-primary"
+                aria-label="Username is available"
+              />
             )}
           </div>
-          <div className="h-5 w-full">
-            {data && !data.available && !isPending && (
-              <p className="text-sm text-destructive">Username {data.username} is taken.</p>
-            )}
+          <div className="min-h-5" aria-live="polite">
+            {usernameError ? (
+              <p className="text-sm text-destructive">{usernameError}</p>
+            ) : usernameIsAvailable ? (
+              <p className="text-sm text-primary">That username is available.</p>
+            ) : normalizedUsername.length > 0 && !checkingUsername ? (
+              <p className="text-sm text-muted-foreground">
+                We&apos;ll check availability as you type.
+              </p>
+            ) : null}
           </div>
         </div>
 
-        <div className="absolute -bottom-16 left-0 right-0">
-          {debouncedUsername.length > 2 && data && data.available && data.username === username && (
-            <Button onClick={onCreateUser} disabled={isPending} className="w-full">
-              {creatingUserPending
-                ? (
-                  <>
-                    Creating User
-                    <Loader2 className="animate-spin" />
-                  </>
-                )
-                : "Create User"
-              }
-            </Button>
-          )}
+        <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/30 p-4">
+          <p className="text-sm font-medium">Make it yours</p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Your username appears on posts, milestones, and your profile. Keep it
+            easy for your training circle to remember.
+          </p>
         </div>
-      </div>
-    </section>
+
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={!usernameIsAvailable || checkingUsername || creatingUser}
+        >
+          {creatingUser ? (
+            <>
+              <Loader2Icon data-icon="inline-start" className="animate-spin" aria-hidden="true" />
+              Setting up your profile...
+            </>
+          ) : (
+            "Continue to GymQuest"
+          )}
+        </Button>
+      </form>
+    </AuthShell>
   )
 }

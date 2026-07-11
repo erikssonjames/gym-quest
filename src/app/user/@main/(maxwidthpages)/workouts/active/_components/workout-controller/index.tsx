@@ -1,612 +1,712 @@
-"use client"
+"use client";
 
-import { useContainerRef } from "@/app/user/@main/_components/container-ref-provider"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import TimerComponent, { TimerSeconds } from "@/components/ui/timer"
-import { cn } from "@/lib/utils"
-import { ChevronDown, Info, Loader2, Pause, Play, RotateCcw, Timer, X } from "lucide-react"
-import { useState, useMemo, type ReactNode, useRef, useEffect} from "react"
-import { useWorkoutStepController } from "./hooks/use-workout-step-controller"
-import type { Action } from "./hooks/use-workout-actions-builder"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import Timer from "@/components/ui/timer";
+import { cn } from "@/lib/utils";
+import { api } from "@/trpc/react";
+import {
+  Check,
+  CircleGauge,
+  Dumbbell,
+  Loader2,
+  Play,
+  SkipForward,
+  TimerReset,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  deriveSessionProgress,
+  getFollowingSessionItem,
+  type ActiveSession,
+  type SessionSequenceItem,
+} from "./session-progress";
 
-type BasePageProps = {
-  isCollapsed: boolean,
-  toggleCollapse: () => void,
-  incrementStep: (completedStep: Action) => void,
-  isPending: boolean
-}
+export default function WorkoutController() {
+  const router = useRouter();
+  const utils = api.useUtils();
+  const { data: session } = api.workout.getActiveWorkoutSession.useQuery();
 
-type PageProps<T> = BasePageProps & {
-  action: Extract<Action, { type: T }>
-}
+  const startWorkout = api.workout.startWorkoutSession.useMutation();
+  const startLogs = api.workout.startWorkoutSessionLogs.useMutation();
+  const startFragment =
+    api.workout.startWorkoutSessionLogFragment.useMutation();
+  const endFragment = api.workout.endWorkoutSessionLogFragment.useMutation();
+  const skipFragment = api.workout.skipWorkoutSessionLogFragment.useMutation();
+  const endWorkout = api.workout.endWorkoutSession.useMutation();
 
-export default function WorkoutController () {
-  const { activeStep, incrementStep, isPending } = useWorkoutStepController()
+  const isPending = [
+    startWorkout,
+    startLogs,
+    startFragment,
+    endFragment,
+    skipFragment,
+    endWorkout,
+  ].some((mutation) => mutation.isPending);
 
-  const [collapsed, setCollapsed] = useState(false)
-  const ref = useContainerRef()
+  const progress = useMemo(
+    () => (session ? deriveSessionProgress(session) : null),
+    [session],
+  );
 
-  const currentPage = useMemo<{ component: ReactNode, header: ReactNode } | null>(() => {
-    if (!activeStep) return null;
-  
-    const partialProps: BasePageProps = {
-      isCollapsed: collapsed,
-      toggleCollapse: () => setCollapsed((prev) => !prev),
-      incrementStep,
-      isPending
+  const invalidateSession = useCallback(async () => {
+    await utils.workout.getActiveWorkoutSession.invalidate();
+  }, [utils]);
+
+  const runAction = useCallback(async (action: () => Promise<void>) => {
+    try {
+      await action();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update the workout.",
+      );
     }
+  }, []);
 
-    switch (activeStep.type) {
-    case "end_fragment":
-      return {
-        component: <FragmentInput {...partialProps} action={activeStep} />,
-        header: <FragmentInputHeader {...partialProps} action={activeStep} />
-      };
-  
-    case "start_workout":
-      return {
-        component: <StartWorkout {...partialProps} action={activeStep} />,
-        header: <StartWorkoutHeader {...partialProps} action={activeStep} />
-      };
-  
-    case "start_exercise":
-      return {
-        component: <StartExercise {...partialProps} action={activeStep} />,
-        header: <StartExerciseHeader {...partialProps} action={activeStep} />
-      };
-  
-    case "start_next_set":
-      return {
-        component: <GoToNextSet {...partialProps} action={activeStep} />,
-        header: <GoToNextSetHeader {...partialProps} action={activeStep} />
-      };
-  
-    case "end_workout":
-      return {
-        component: <WorkoutCompleted {...partialProps} action={activeStep} />,
-        header: <WorkoutCompletedHeader {...partialProps} action={activeStep} />
-      };
-  
-    default:
-      return null;
-    }
-  }, [activeStep, incrementStep, collapsed, isPending]);
-  
-  if (!ref.current || !currentPage) return null
+  const startSessionItem = useCallback(
+    async (item: SessionSequenceItem, invalidate = true) => {
+      const logsToStart = item.groupLogs.filter(
+        (log) => log.startedAt === null && log.endedAt === null,
+      );
 
-  return (
-    <div className="w-full pb-4">
-      <Collapsible className="border rounded-t-lg md:rounded-lg shadow-2xl overflow-hidden">
-        <CollapsibleTrigger className="group w-full p-2">
-          <div className="w-full px-6 py-4 hover:bg-accent/20 rounded-lg">
-            <div className="max-w-96 mx-auto flex justify-between items-center px-6">
-              {currentPage.header}
-              <ChevronDown className="transition-all text-muted-foreground group-data-[state=open]:rotate-180"/>
-            </div>
-          </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent
-          className="overflow-hidden data-[state=open]:animate-collapsible-slide-down data-[state=closed]:animate-collapsible-slide-up"
-        >
-          <div className="px-6 pb-6 pt-2 max-w-96 mx-auto">
-            {currentPage.component}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
-  )
-}
-
-function StartWorkoutHeader ({}: PageProps<"start_workout">) {
-  return (
-    <div className="flex gap-4 items-center">
-      <p className="font-semibold">Start Workout</p>
-    </div>
-  )
-}
-function StartWorkout ({ incrementStep, action, isPending}: PageProps<"start_workout">) {
-  return (
-    <Button 
-      className="w-full mt-2" 
-      type="button" 
-      onClick={() => incrementStep(action)}
-      disabled={isPending}
-    >
-      Start
-      {isPending && <Loader2 className="animate-spin" />}
-    </Button>
-  )
-}
-
-function StartExerciseHeader ({}: PageProps<"start_exercise">) {
-  return (
-    <div className="flex gap-4 items-center">
-      <p className="font-semibold">Start Next Exercise</p>
-    </div>
-  )
-}
-function StartExercise ({ action, incrementStep, isPending }: PageProps<"start_exercise">) {
-  const { exercises, workoutSessionLogs } = action.data
-  const latestExerciseEndedAt = workoutSessionLogs
-    .map(log => log.endedAt)
-    .filter(endedAt => endedAt !== null)
-    .sort((a, b) => b.getTime() - a.getTime())
-    .at(0)
-
-  const onStartWorkout = () => {
-    incrementStep(action)
-  }
-
-  return (
-    <>
-      <div className="flex gap-8 mb-7">
-        <div className="">
-          <p className="text-xs text-muted-foreground">
-            Upcoming exercise{exercises.length > 1 && "s"}
-          </p>
-          {exercises.map(exercise => (
-            <div key={exercise.id}>
-              {exercise.name}
-            </div>
-          ))}
-        </div>
-
-        {latestExerciseEndedAt && (
-          <div>
-            <p className="text-xs text-muted-foreground">
-              Time since last set
-            </p>
-            <TimerComponent className="text-sm" startTime={latestExerciseEndedAt} />
-          </div>
-        )}
-      </div>
-
-
-      <Button 
-        className="w-full mt-2" 
-        type="button" 
-        onClick={onStartWorkout} 
-        disabled={isPending}
-      >
-        Start
-        {isPending && <Loader2 className="animate-spin" />}
-      </Button>
-    </>
-  )
-}
-
-function FragmentInputHeader ({ action }: PageProps<"end_fragment">) {
-  const { exercise, fragment } = action.data
-
-  return (
-    <div className="flex gap-4 items-center">
-      <p className="font-semibold">{exercise.name}</p>
-      <TimerComponent className="text-sm" startTime={fragment.startedAt ?? new Date()} />
-    </div>
-  )
-}
-function FragmentInput (
-  { action, incrementStep, isPending }: PageProps<"end_fragment">
-) {
-  const { data } = action
-
-  const [openPrevInfo, setOpenPrevInfo] = useState(false)
-  const [durationInputType, setDurationInputType] = useState<"timer" | "custom">("timer")
-
-  const [reps, setReps] = useState(data.fragment.reps)
-  const [weight, setWeight] = useState<number>(0)
-  const [duration, setDuration] = useState<number>(0)
-  const durationTimerRef = useRef(0)
-
-  const onAddFragment = () => {
-    const d = durationInputType === "timer"
-      ? durationTimerRef.current
-      : duration
-
-    incrementStep({
-      ...action,
-      data: {
-        ...data,
-        fragment: {
-          ...data.fragment,
-          reps,
-          weight,
-          duration: d
-        }
+      if (logsToStart.length > 0) {
+        await startLogs.mutateAsync(
+          logsToStart.map((log) => ({
+            workoutSessionId: log.workoutSessionId,
+            workoutSessionLogId: log.id,
+          })),
+        );
       }
-    })
-  }
 
-  const { numberOfSets, setsCompleted, fragment, previousData, exercise } = data
+      await startFragment.mutateAsync({
+        fragmentId: item.fragment.id,
+        sessionId: item.log.workoutSessionId,
+      });
 
-  const lastReps = previousData?.orderToReps[fragment.order]
-  const lastValues = previousData?.repsToValues[reps]
+      if (invalidate) await invalidateSession();
+    },
+    [invalidateSession, startFragment, startLogs],
+  );
+
+  if (!session || !progress) return null;
+
+  const handleStartWorkout = () =>
+    runAction(async () => {
+      await startWorkout.mutateAsync(session.id);
+
+      if (progress.nextItem) {
+        await startSessionItem(progress.nextItem);
+      } else {
+        await invalidateSession();
+      }
+    });
+
+  const handleStartSet = (item: SessionSequenceItem) =>
+    runAction(async () => {
+      await startSessionItem(item);
+    });
+
+  const handleSkipSet = (item: SessionSequenceItem) =>
+    runAction(async () => {
+      await skipFragment.mutateAsync({
+        fragmentId: item.fragment.id,
+        sessionId: session.id,
+      });
+
+      const followingItem = getFollowingSessionItem(session, item.fragment.id);
+      const continuesSupersetRound =
+        followingItem &&
+        followingItem.groupOrder === item.groupOrder &&
+        followingItem.roundIndex === item.roundIndex;
+
+      if (followingItem && continuesSupersetRound) {
+        await startSessionItem(followingItem);
+      } else {
+        await invalidateSession();
+      }
+    });
+
+  const handleCompleteSet = (
+    item: SessionSequenceItem,
+    values: { reps: number; weight: number; duration: number },
+  ) =>
+    runAction(async () => {
+      await endFragment.mutateAsync({
+        sessionId: session.id,
+        fragment: {
+          ...item.fragment,
+          reps: values.reps,
+          weight: values.weight,
+          duration: values.duration,
+        },
+      });
+
+      const followingItem = getFollowingSessionItem(session, item.fragment.id);
+      const continuesSupersetRound =
+        followingItem &&
+        followingItem.groupOrder === item.groupOrder &&
+        followingItem.roundIndex === item.roundIndex;
+
+      if (followingItem && continuesSupersetRound) {
+        await startSessionItem(followingItem);
+      } else {
+        await invalidateSession();
+      }
+    });
+
+  const handleEndWorkout = () =>
+    runAction(async () => {
+      const sessionId = await endWorkout.mutateAsync(session.id);
+      await invalidateSession();
+
+      router.push(
+        sessionId
+          ? `/user/workouts/active/completed/${sessionId}`
+          : "/user/workouts",
+      );
+    });
 
   return (
-    <>
-      <div className="grid grid-cols-3">
-        <div>
-          <p className="text-xs text-muted-foreground">Sets</p>
-          <p>{setsCompleted}/{numberOfSets}</p>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted-foreground">Target Reps</p>
-          <p>{fragment.reps}</p>
-        </div>
-
-        {lastReps && lastValues && (
-          <div className="flex items-center justify-end">
-            <button 
-              className={cn(
-                "hover:bg-accent/60 rounded-lg h-10 border flex items-center justify-center px-3 gap-2",
-                openPrevInfo && "bg-accent/60"
-              )}
-              onClick={() => setOpenPrevInfo(!openPrevInfo)}
-            >
-              <span className="text-sm font-semibold">Set Info</span>
-              <Info size={20} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <Collapsible className="overflow-hidden" open={openPrevInfo}>
-        <CollapsibleContent
-          className="overflow-hidden data-[state=open]:animate-collapsible-slide-down data-[state=closed]:animate-collapsible-slide-up"
-        >
-          {/* <div className="border p-4 rounded-lg mt-4">
-            <div>
-              <p>Reps last time doing {exercise.name}</p>
-              <p>{lastReps}</p>
-            </div>
-            <div>
-              {lastValues?.lastSet.weight !== undefined && (
-                <>
-                  <p>Weight last time doing {exercise.name}</p>
-                  <p>{lastValues?.lastSet.weight}</p>
-                </>
-              )}
-              {lastValues?.lastSet.duration !== undefined && (
-                <>
-                  <p>Duration last time doing {exercise.name}</p>
-                  <p>{lastValues?.lastSet.duration}</p>
-                </>
-              )}
-              {lastValues?.lastFiveAverage?.weight  !== undefined && (
-                <>
-                  <p>Weight last 5 sets of {exercise.name}</p>
-                  <p>{lastValues?.lastFiveAverage?.weight}</p>
-                </>
-              )}
-              {lastValues?.lastFiveAverage?.weight !== undefined && (
-                <>
-                  <p>Duration last 5 sets of {exercise.name}</p>
-                  <p>{lastValues?.lastFiveAverage?.weight}</p>
-                </>
-              )}
-            </div>
-          </div> */}
-          <div className="p-4 border rounded-lg mt-4">
-            <ExerciseStatsDisplay
-              lastReps={lastReps}
-              lastValues={lastValues}
-              setNumber={fragment.order + 1}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      <div className="flex mt-6 gap-4 px-1">
-        <div className="space-y-2 flex-grow">
-          <p className="text-xs">Duration (s)</p>
-          <div className="h-16 text-3xl border rounded-md flex">
-            <div className="h-full flex-grow">
-              {durationInputType === "timer" ? (
-                <DurationTimer
-                  onDurationChange={(duration) => durationTimerRef.current = duration}
-                />
-              ) : (
-                <input 
-                  value={duration} 
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                  className="w-full bg-transparent h-full ps-3"
-                />
-              )}
-            </div>
-            <button
-              onClick={() => durationInputType === "timer" ? setDurationInputType("custom") : setDurationInputType("timer")}
-              className="h-full hover:bg-accent w-10 flex-shrink-0 flex items-center justify-center border-l"
-            >
-              {durationInputType === "timer" ? (
-                <X size={16} />
-              ) : (
-                <Timer size={16} />
-              )}
-            </button>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs">Weight (kg)</p>
-          <Input value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="!text-3xl h-16 w-20" />
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs">Reps</p>
-          <Input value={reps} onChange={(e) => setReps(Number(e.target.value))} className="!text-3xl h-16 w-20" />
-        </div>
-      </div>
-
-      <Button 
-        className="w-full mt-8" 
-        type="button" 
-        onClick={onAddFragment}
-        disabled={isPending}
-      >
-        Complete Set
-        {isPending && <Loader2 className="animate-spin" />}
-      </Button>
-    </>
-  )
+    <SessionRunnerView
+      isPending={isPending}
+      onCompleteSet={handleCompleteSet}
+      onEndWorkout={handleEndWorkout}
+      onSkipSet={handleSkipSet}
+      onStartSet={handleStartSet}
+      onStartWorkout={handleStartWorkout}
+      progress={progress}
+      session={session}
+    />
+  );
 }
-function DurationTimer ({ onDurationChange }: { onDurationChange: (duration: number) => void }) {
-  const [timestamps, setTimestamps] = useState<Array<{ start: Date, end?: Date }>>([])
 
-  const timeInfo = useMemo(() => {
-    const timePassed = Math.floor(timestamps
-      .filter(t => t.end !== undefined)
-      .reduce<number>((acc, curr) => {
-        return acc + ((curr.end!.getTime() - curr.start.getTime()) / 1000)
-      }, 0))
-    const lastStartedDate  = timestamps.find(t => t.end === undefined)?.start
+export function SessionRunnerView({
+  isPending,
+  onCompleteSet,
+  onEndWorkout,
+  onSkipSet,
+  onStartSet,
+  onStartWorkout,
+  progress,
+  session,
+}: {
+  isPending: boolean;
+  onCompleteSet: (
+    item: SessionSequenceItem,
+    values: { reps: number; weight: number; duration: number },
+  ) => void;
+  onEndWorkout: () => void;
+  onSkipSet: (item: SessionSequenceItem) => void;
+  onStartSet: (item: SessionSequenceItem) => void;
+  onStartWorkout: () => void;
+  progress: ReturnType<typeof deriveSessionProgress>;
+  session: ActiveSession;
+}) {
+  return (
+    <Card className="mt-5 overflow-hidden border-primary/20 shadow-sm">
+      <SessionProgressHeader session={session} progress={progress} />
+      <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+        {progress.kind === "not_started" && (
+          <StartWorkoutState
+            hasPlan={progress.totalCount > 0}
+            isPending={isPending}
+            onStart={onStartWorkout}
+          />
+        )}
 
-    return {
-      timePassed,
-      lastStartedDate
-    }
-  }, [timestamps])
+        {progress.kind === "empty" && <EmptyWorkoutState />}
+
+        {progress.kind === "ready_set" && progress.nextItem && (
+          <ReadySetState
+            isPending={isPending}
+            item={progress.nextItem}
+            onSkip={() => onSkipSet(progress.nextItem!)}
+            onStart={() => onStartSet(progress.nextItem!)}
+            session={session}
+          />
+        )}
+
+        {progress.kind === "active_set" && progress.nextItem && (
+          <ActiveSetState
+            isPending={isPending}
+            item={progress.nextItem}
+            key={progress.nextItem.fragment.id}
+            onComplete={(values) => onCompleteSet(progress.nextItem!, values)}
+            session={session}
+          />
+        )}
+
+        <RestProgressState
+          isPending={isPending}
+          onSkipSet={onSkipSet}
+          onStartSet={onStartSet}
+          progress={progress}
+        />
+
+        {progress.kind === "workout_complete" && (
+          <WorkoutCompleteState
+            isPending={isPending}
+            onEnd={onEndWorkout}
+            performedCount={progress.performedCount}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SessionProgressHeader({
+  session,
+  progress,
+}: {
+  session: ActiveSession;
+  progress: ReturnType<typeof deriveSessionProgress>;
+}) {
+  const progressPercent =
+    progress.totalCount > 0
+      ? Math.round((progress.resolvedCount / progress.totalCount) * 100)
+      : 0;
+
+  return (
+    <CardHeader className="space-y-3 p-4 md:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase text-muted-foreground">
+            Now training
+          </p>
+          <p className="truncate text-lg font-semibold">
+            {session.workout?.name ?? "Open workout"}
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2 text-sm text-muted-foreground">
+          <CircleGauge className="size-4" />
+          <span>
+            {progress.resolvedCount}/{progress.totalCount} sets
+          </span>
+        </div>
+      </div>
+      <div
+        aria-label={`${progressPercent}% of the session resolved`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={progressPercent}
+        className="h-1.5 w-full overflow-hidden rounded-full bg-secondary"
+        role="progressbar"
+      >
+        <div
+          className="h-full bg-primary transition-[width]"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+    </CardHeader>
+  );
+}
+
+function StartWorkoutState({
+  hasPlan,
+  isPending,
+  onStart,
+}: {
+  hasPlan: boolean;
+  isPending: boolean;
+  onStart: () => void;
+}) {
+  return (
+    <div className="py-3 text-center md:py-8">
+      <Dumbbell className="mx-auto size-9 text-primary" />
+      <h1 className="mt-4 text-xl font-semibold">Ready to train?</h1>
+      <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+        {hasPlan
+          ? "Your first set will start with the session timer."
+          : "Start the timer, then add your first exercise below."}
+      </p>
+      <Button
+        className="mt-6 h-12 w-full max-w-sm"
+        disabled={isPending}
+        onClick={onStart}
+      >
+        {isPending ? <Loader2 className="animate-spin" /> : <Play />}
+        Start workout
+      </Button>
+    </div>
+  );
+}
+
+function EmptyWorkoutState() {
+  return (
+    <div className="py-5 text-center">
+      <Dumbbell className="mx-auto size-8 text-muted-foreground" />
+      <p className="mt-3 font-semibold">Add your first exercise</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        The session timer is running. Use the session plan below to add a set.
+      </p>
+    </div>
+  );
+}
+
+function ReadySetState({
+  isPending,
+  item,
+  onSkip,
+  onStart,
+  session,
+}: {
+  isPending: boolean;
+  item: SessionSequenceItem;
+  onSkip: () => void;
+  onStart: () => void;
+  session: ActiveSession;
+}) {
+  return (
+    <div>
+      <SetHeading item={item} />
+      <TargetMetrics item={item} />
+      <PreviousPerformance item={item} session={session} />
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+        <Button className="h-12 flex-1" disabled={isPending} onClick={onStart}>
+          {isPending ? <Loader2 className="animate-spin" /> : <Play />}
+          Start set
+        </Button>
+        <Button
+          className="h-12"
+          disabled={isPending}
+          onClick={onSkip}
+          variant="outline"
+        >
+          <SkipForward />
+          Skip set
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ActiveSetState({
+  isPending,
+  item,
+  onComplete,
+  session,
+}: {
+  isPending: boolean;
+  item: SessionSequenceItem;
+  onComplete: (values: {
+    reps: number;
+    weight: number;
+    duration: number;
+  }) => void;
+  session: ActiveSession;
+}) {
+  const previousValues = getPreviousValues(session, item);
+  const [reps, setReps] = useState(item.fragment.reps);
+  const [weight, setWeight] = useState(
+    item.fragment.weight || Math.round(previousValues?.weight ?? 0),
+  );
+  const [duration, setDuration] = useState(item.fragment.duration);
+
+  const completeSet = () => {
+    const elapsedSeconds = item.fragment.startedAt
+      ? (Date.now() - item.fragment.startedAt.getTime()) / 1000
+      : 0;
+    const automaticDuration = Math.max(0, Math.round(elapsedSeconds));
+
+    onComplete({
+      duration: duration || automaticDuration,
+      reps: Math.max(0, reps),
+      weight: Math.max(0, weight),
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-4">
+        <SetHeading item={item} />
+        <div className="flex flex-shrink-0 items-center gap-2 text-sm text-muted-foreground">
+          <TimerReset className="size-4" />
+          <Timer
+            className="tabular-nums"
+            startTime={item.fragment.startedAt ?? undefined}
+          />
+        </div>
+      </div>
+      <TargetMetrics item={item} />
+      <PreviousPerformance item={item} session={session} />
+
+      <div className="mt-6 grid grid-cols-3 gap-2 md:gap-4">
+        <NumberField label="Weight (kg)" onChange={setWeight} value={weight} />
+        <NumberField label="Reps" onChange={setReps} value={reps} />
+        <NumberField
+          label="Duration (s)"
+          onChange={setDuration}
+          value={duration}
+        />
+      </div>
+
+      <Button
+        className="mt-6 h-14 w-full text-base"
+        disabled={isPending}
+        onClick={completeSet}
+      >
+        {isPending ? <Loader2 className="animate-spin" /> : <Check />}
+        Complete set
+      </Button>
+    </div>
+  );
+}
+
+function RestState({
+  isPending,
+  item,
+  onSkipSet,
+  onStart,
+  restSeconds,
+  restStartedAt,
+}: {
+  isPending: boolean;
+  item: SessionSequenceItem;
+  onSkipSet: () => void;
+  onStart: () => void;
+  restSeconds: number;
+  restStartedAt: Date;
+}) {
+  const remainingSeconds = useRestCountdown(restStartedAt, restSeconds);
+
+  return (
+    <div className="py-2 text-center">
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        Rest
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-5xl font-semibold tabular-nums",
+          remainingSeconds === 0 && "text-primary",
+        )}
+      >
+        {formatTimer(remainingSeconds)}
+      </p>
+      <p className="mt-4 text-sm text-muted-foreground">Up next</p>
+      <p className="text-lg font-semibold">{item.log.exercise.name}</p>
+      <p className="text-sm text-muted-foreground">
+        {item.groupLogs.length > 1
+          ? `Superset round ${item.roundNumber}`
+          : `Set ${item.roundNumber} of ${item.roundCount}`}
+      </p>
+
+      <div className="mx-auto mt-6 flex max-w-lg flex-col gap-2 sm:flex-row">
+        <Button className="h-12 flex-1" disabled={isPending} onClick={onStart}>
+          {isPending ? <Loader2 className="animate-spin" /> : <Play />}
+          {remainingSeconds > 0 ? "Skip rest" : "Start next set"}
+        </Button>
+        <Button
+          className="h-12"
+          disabled={isPending}
+          onClick={onSkipSet}
+          variant="outline"
+        >
+          <SkipForward />
+          Skip set
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RestProgressState({
+  isPending,
+  onSkipSet,
+  onStartSet,
+  progress,
+}: {
+  isPending: boolean;
+  onSkipSet: (item: SessionSequenceItem) => void;
+  onStartSet: (item: SessionSequenceItem) => void;
+  progress: ReturnType<typeof deriveSessionProgress>;
+}) {
+  if (
+    progress.kind !== "rest" ||
+    !progress.nextItem ||
+    !progress.restStartedAt
+  ) return null;
+
+  return (
+    <RestState
+      isPending={isPending}
+      item={progress.nextItem}
+      onSkipSet={() => onSkipSet(progress.nextItem!)}
+      onStart={() => onStartSet(progress.nextItem!)}
+      restSeconds={progress.restSeconds ?? 0}
+      restStartedAt={progress.restStartedAt}
+    />
+  );
+}
+
+function WorkoutCompleteState({
+  isPending,
+  onEnd,
+  performedCount,
+}: {
+  isPending: boolean;
+  onEnd: () => void;
+  performedCount: number;
+}) {
+  return (
+    <div className="py-5 text-center">
+      <Check className="mx-auto size-10 text-primary" />
+      <h2 className="mt-3 text-xl font-semibold">Session complete</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {performedCount} set{performedCount === 1 ? "" : "s"} performed
+      </p>
+      <Button
+        className="mt-6 h-12 w-full max-w-sm"
+        disabled={isPending}
+        onClick={onEnd}
+      >
+        {isPending && <Loader2 className="animate-spin" />}
+        Finish and view summary
+      </Button>
+    </div>
+  );
+}
+
+function SetHeading({ item }: { item: SessionSequenceItem }) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        {item.groupLogs.length > 1
+          ? `Superset ${item.groupNumber} · Round ${item.roundNumber}/${item.roundCount}`
+          : `Exercise ${item.groupNumber}/${item.groupCount} · Set ${item.roundNumber}/${item.roundCount}`}
+      </p>
+      <h2 className="mt-1 text-2xl font-semibold">{item.log.exercise.name}</h2>
+    </div>
+  );
+}
+
+function TargetMetrics({ item }: { item: SessionSequenceItem }) {
+  const metrics = [
+    { label: "Target", value: `${item.fragment.reps} reps` },
+    ...(item.fragment.weight > 0
+      ? [{ label: "Weight", value: `${item.fragment.weight} kg` }]
+      : []),
+    ...(item.fragment.duration > 0
+      ? [{ label: "Duration", value: `${item.fragment.duration}s` }]
+      : []),
+    ...(item.fragment.restTime > 0
+      ? [{ label: "Rest", value: `${item.fragment.restTime}s` }]
+      : []),
+  ];
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-y py-3">
+      {metrics.map((metric) => (
+        <div key={metric.label}>
+          <p className="text-xs text-muted-foreground">{metric.label}</p>
+          <p className="font-medium">{metric.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PreviousPerformance({
+  item,
+  session,
+}: {
+  item: SessionSequenceItem;
+  session: ActiveSession;
+}) {
+  const previousValues = getPreviousValues(session, item);
+  const previousReps =
+    session.previousData[item.log.exerciseId]?.orderToReps[item.fragment.order];
+
+  if (previousReps === undefined && !previousValues) return null;
+
+  const details = [
+    previousValues?.weight !== undefined
+      ? `${Math.round(previousValues.weight)} kg`
+      : null,
+    previousReps !== undefined ? `${previousReps} reps` : null,
+    previousValues?.duration !== undefined
+      ? `${Math.round(previousValues.duration)}s`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <p className="mt-3 text-sm text-muted-foreground">
+      Last time: <span className="font-medium text-foreground">{details}</span>
+    </p>
+  );
+}
+
+function NumberField({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  return (
+    <label className="min-w-0 space-y-2">
+      <span className="block truncate text-xs text-muted-foreground">
+        {label}
+      </span>
+      <Input
+        className="h-14 px-2 text-center !text-xl tabular-nums md:!text-2xl"
+        inputMode="numeric"
+        min={0}
+        onChange={(event) =>
+          onChange(Math.max(0, Math.round(Number(event.target.value) || 0)))
+        }
+        type="number"
+        value={value}
+      />
+    </label>
+  );
+}
+
+function getPreviousValues(session: ActiveSession, item: SessionSequenceItem) {
+  const previousData = session.previousData[item.log.exerciseId];
+  if (!previousData) return undefined;
+
+  const previousReps = previousData.orderToReps[item.fragment.order];
+  return (
+    previousData.repsToValues[item.fragment.reps]?.lastSet ??
+    (previousReps !== undefined
+      ? previousData.repsToValues[previousReps]?.lastSet
+      : undefined)
+  );
+}
+
+function useRestCountdown(startedAt: Date, restSeconds: number) {
+  const calculateRemaining = useCallback(() => {
+    const elapsedSeconds = Math.floor(
+      (Date.now() - startedAt.getTime()) / 1000,
+    );
+    return Math.max(0, restSeconds - elapsedSeconds);
+  }, [restSeconds, startedAt]);
+  const [remaining, setRemaining] = useState(calculateRemaining);
 
   useEffect(() => {
-    const duration = (
-      timeInfo.timePassed + 
-      (
-        timeInfo.lastStartedDate
-          ? (timeInfo.lastStartedDate.getTime() - Date.now()) / 1000
-          : 0
-      )
-    )
-    onDurationChange(duration)
-  }, [timeInfo])
+    setRemaining(calculateRemaining());
+    const interval = window.setInterval(
+      () => setRemaining(calculateRemaining()),
+      1000,
+    );
+    return () => window.clearInterval(interval);
+  }, [calculateRemaining]);
 
-  const isActive = timestamps.some(t => t.end === undefined)
-
-  const onPause = () => {
-    setTimestamps(prev => {
-      return prev.map(t => ({
-        start: t.start,
-        end: t.end ? t.end : new Date()
-      }))
-    })
-  }
-
-  const onPlay = () => {
-    setTimestamps(prev => {
-      if (prev.some(t => t.end === undefined)) return prev
-
-      return [
-        ...prev,
-        { start: new Date() }
-      ]
-    })
-  }
-
-  const onReset = () => {
-    setTimestamps([])
-  }
-
-  return (
-    <div className="flex p-2 h-full items-center">
-      {timestamps.length === 0 ? (
-        <Button
-          className="w-full h-full bg-green-600"
-          size="icon"
-          variant="ghost"
-          onClick={() => {
-            setTimestamps(prev => {
-              return [
-                ...prev,
-                { start: new Date() }
-              ]
-            })
-          }}
-        >
-          <Play />
-        </Button>    
-      ): (
-        <div className="flex items-center h-full w-full">
-          <div className="flex-grow rounded-r-none rounded-l-md border h-full flex items-center">
-            <TimerSeconds
-              paused={!isActive}
-              className="ps-2 text-xl flex-grow"
-              initialSeconds={timeInfo.timePassed} 
-              startTime={timeInfo.lastStartedDate}
-            />
-          </div>
-          <div className="flex flex-col h-full w-6">
-            <Button 
-              size="icon" 
-              variant="ghost"
-              className="size-4 flex-grow w-full rounded-b-none rounded-tl-none bg-red-700"
-              onClick={onReset}
-            >
-              <RotateCcw />
-            </Button>
-            <Button 
-              size="icon"
-              variant="ghost"
-              className={cn(
-                "size-4 flex-grow min-w-full rounded-t-none rounded-bl-none",
-                isActive ? "bg-blue-400" : "bg-green-600"
-              )}
-              onClick={() => isActive ? onPause() : onPlay()}
-            >
-              {isActive ? <Pause /> : <Play />}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-interface StatValues {
-  weight?: number;
-  duration?: number;
-}
-interface LastValues {
-  lastSet?: StatValues;
-  lastFiveAverage?: StatValues;
-}
-interface Props {
-  lastReps?: number;            // an integer or undefined
-  lastValues?: LastValues;      // object with lastSet, lastFiveAverage
-  setNumber: number
-}
-function ExerciseStatsDisplay({ lastReps, lastValues, setNumber }: Props) {
-  // If there's no data at all, don't render anything
-  if (!lastReps && !lastValues) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-4">
-      {lastReps !== undefined && (
-        <p className="text-xs">
-          Last time, you finished <span className="font-bold">{lastReps}</span> reps 
-          for set <span className="font-bold">#{setNumber}</span>. Let&apos;s see if you can match or beat that!
-        </p>
-      )}
-      {lastValues && (
-        <StatsTable lastSet={lastValues.lastSet} lastFiveAverage={lastValues.lastFiveAverage} />
-      )}
-    </div>
-  );
-}
-function StatsTable({
-  lastSet,
-  lastFiveAverage,
-}: {
-  lastSet?: StatValues;
-  lastFiveAverage?: StatValues;
-}) {
-  // Check if there's any data to display for each row
-  const hasLastSet = lastSet && (lastSet.weight ?? lastSet.duration);
-  const hasLastFive = lastFiveAverage && (lastFiveAverage.weight ?? lastFiveAverage.duration);
-
-  // If no data at all, return null
-  if (!hasLastSet && !hasLastFive) return null;
-
-  return (
-    <table className="w-full max-w-sm text-left text-sm">
-      <thead>
-        <tr>
-          <th className="font-normal"></th>
-          <th className="font-normal">Weight</th>
-          <th className="font-normal">Duration</th>
-        </tr>
-      </thead>
-      <tbody>
-        {/* Last Set row */}
-        {hasLastSet && lastSet && (
-          <tr>
-            <td className="pr-2 font-medium">Last Set</td>
-            <td>{lastSet.weight ?? "—"}</td>
-            <td>{lastSet.duration ?? "—"}</td>
-          </tr>
-        )}
-        {/* Last 5 Average row */}
-        {hasLastFive && lastFiveAverage && (
-          <tr>
-            <td className="pr-2 font-medium">Last 5 Avg</td>
-            <td>{lastFiveAverage.weight ?? "—"}</td>
-            <td>{lastFiveAverage.duration ?? "—"}</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  );
+  return remaining;
 }
 
-
-function GoToNextSetHeader ({ action }: PageProps<"start_next_set">) {
-  const { workoutSessionLogs } = action.data
-  const latestExerciseEndedAt = workoutSessionLogs
-    .flatMap(log => log.workoutSessionLogFragments.map(fragment => fragment.endedAt))
-    .filter(endedAt => endedAt !== null)
-    .sort((a, b) => b.getTime() - a.getTime())
-    .at(0)
-
-  return (
-    <div className="flex gap-4 items-center">
-      <p className="font-semibold">Start Next Set</p>
-      <TimerComponent className="text-sm" startTime={latestExerciseEndedAt} />
-    </div>
-  )
-}
-function GoToNextSet ({ action, incrementStep, isPending }: PageProps<"start_next_set">) {
-  const onStartNextSet = async () => {
-    incrementStep(action)
-  }
-
-  const { workoutSessionLogs } = action.data
-  const nonCompleted = workoutSessionLogs
-    .flatMap(log => log.workoutSessionLogFragments)
-    .filter(fragment => fragment.endedAt === null).length
-
-  return (
-    <>
-      <div className="flex items-baseline gap-6">
-        <div>
-          <p className="text-xs text-muted-foreground">Exercise</p>
-          {workoutSessionLogs.map(col => (
-            <div key={col.id}>
-              {col.exercise.name}
-            </div>
-          ))}
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Sets Remaining</p>
-          <p>{nonCompleted}</p>
-        </div>
-      </div>
-
-      <Button 
-        className="w-full mt-8" 
-        type="button" 
-        onClick={onStartNextSet}
-        disabled={isPending}
-      >
-        Start
-        {isPending && <Loader2 className="animate-spin" />}
-      </Button>
-    </>
-  )
-}
-
-function WorkoutCompletedHeader ({}: PageProps<"end_workout">) {
-  return (
-    <div className="w-full h-full flex">
-      <p>End of workout</p>
-    </div>
-  )
-}
-function WorkoutCompleted ({ isPending, incrementStep, action }: PageProps<"end_workout">) {
-  return (
-    <div className="w-full h-full flex items-center justify-center">
-      <Button onClick={() => incrementStep(action)} disabled={isPending}>
-        End Workout
-        {isPending && <Loader2 className="animate-spin" />}
-      </Button>
-    </div>
-  )
+function formatTimer(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }

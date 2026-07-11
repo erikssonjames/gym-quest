@@ -1,10 +1,11 @@
-import { Badge, badgeProgress, badgeProgressEvent } from "@/server/db/schema/badges";
+import { type Badge, badgeProgress, badgeProgressEvent } from "@/server/db/schema/badges";
 import type { WorkoutSession, WorkoutSessionLog, WorkoutSessionLogFragment } from "@/server/db/schema/workout";
 import { getCtxUserId } from "@/server/utils/user";
 import type { TRPCContext } from "@/trpc/server";
 import { BADGE_GROUP_RECORD, BADGE_GROUPS, type BadgeLiteral, type BadgeGroupName } from "@/variables/badges";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
+import { ensureBadgeProgressRows } from "@/server/services/user-provisioning";
 
 type Session = WorkoutSession & {
   workoutSessionLogs: Array<
@@ -24,6 +25,7 @@ export async function handleBadgeProgressFromWorkoutSession(
   session: Session
 ): Promise<Badge[]> {
   const userId = getCtxUserId(ctx);
+  await ensureBadgeProgressRows(ctx.db, userId);
 
   // Decide which badge groups we want to process
   const relevantBadgeGroups: BadgeGroupName[] = [

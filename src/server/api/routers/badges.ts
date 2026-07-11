@@ -8,7 +8,8 @@ import { and, eq } from "drizzle-orm";
 import { badge, badgeProgress, BadgeZod, InsertBadgeZod } from "@/server/db/schema/badges";
 import { getCtxUserId } from "@/server/utils/user";
 import { TRPCError } from "@trpc/server";
-import { userProfile } from "@/server/db/schema/user";
+import { userProfile, users } from "@/server/db/schema/user";
+import { ensureBadgeProgressRows } from "@/server/services/user-provisioning";
 
 export const badgesRouter = createTRPCRouter({
   getBadges: protectedProcedure
@@ -19,20 +20,54 @@ export const badgesRouter = createTRPCRouter({
   getBadgesWithProgress: protectedProcedure
     .query(async ({ ctx }) => {
       const userId = getCtxUserId(ctx)
+      await ensureBadgeProgressRows(ctx.db, userId)
 
-      return await ctx.db
+      const rows = await ctx.db
         .select()
         .from(badge)
         .leftJoin(badgeProgress, and(
           eq(badgeProgress.badgeId, badge.id),
           eq(badgeProgress.userId, userId)
         ))
+
+      const progressRows = await ctx.db.query.badgeProgress.findMany({
+        where: eq(badgeProgress.userId, userId),
+        with: { progressEvents: true },
+      })
+      const currentValueByBadgeId = new Map(
+        progressRows.map((progress) => [
+          progress.badgeId,
+          progress.progressEvents.reduce((highest, event) => Math.max(highest, event.value), 0),
+        ])
+      )
+
+      return rows.map((row) => ({
+        badge: row.badge,
+        badgeProgress: row.badgeProgress
+          ? {
+              ...row.badgeProgress,
+              currentValue: currentValueByBadgeId.get(row.badgeProgress.badgeId) ?? 0,
+            }
+          : null,
+      }))
     }),
 
   addBadge: adminProcedure
     .input(InsertBadgeZod)
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.insert(badge).values(input)
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(badge).values(input)
+        const allUsers = await tx.select({ id: users.id }).from(users)
+        if (allUsers.length > 0) {
+          await tx.insert(badgeProgress).values(
+            allUsers.map(({ id }) => ({
+              badgeId: input.id,
+              completed: false,
+              userId: id,
+            })),
+          ).onConflictDoNothing()
+        }
+      })
     }),
 
   editBadge: adminProcedure
@@ -74,8 +109,12 @@ export const badgesRouter = createTRPCRouter({
         }
       }
 
-      await ctx.db.update(userProfile).set({
-        selectedBadge: badgeId ?? null
-      }).where(eq(userProfile.userId, userId))
+      await ctx.db.insert(userProfile).values({
+        userId,
+        selectedBadge: badgeId ?? null,
+      }).onConflictDoUpdate({
+        target: userProfile.userId,
+        set: { selectedBadge: badgeId ?? null },
+      })
     })
 });

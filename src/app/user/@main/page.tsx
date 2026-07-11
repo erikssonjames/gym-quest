@@ -1,27 +1,20 @@
 "use client"
 
-import { useSidebar } from "@/components/ui/sidebar";
 import DynamicLayout from "./_components/dynamic-layout";
 import Feed from "./_components/feed";
-import UserProfile from "./_components/user-profile";
-import { cn } from "@/lib/utils";
+import FeedSidebar from "./_components/feed/feed-sidebar";
 
-export default function Dashboard () {
-  const { open } = useSidebar()
-
+export default function Dashboard() {
   return (
     <DynamicLayout>
-      <section className="p-10 h-full">
-        <div className="flex gap-6 h-full">
-          <div className={cn(
-            "w-72 hidden flex-shrink-0",
-            open ? "xl:block" : "lg:block"
-          )}>
-            <UserProfile />
-          </div>
-          <div className="flex-grow h-full overflow-y-auto">
+      <section className="h-full overflow-y-auto bg-muted/20">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-5 md:px-6 md:py-7 lg:grid-cols-[minmax(0,48rem)_16rem] lg:justify-center xl:grid-cols-[minmax(0,52rem)_18rem]">
+          <main className="min-w-0">
             <Feed />
-          </div>
+          </main>
+          <aside className="hidden lg:block">
+            <FeedSidebar />
+          </aside>
         </div>
       </section>
     </DynamicLayout>

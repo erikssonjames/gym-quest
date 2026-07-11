@@ -10,9 +10,13 @@ import { memo, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import EditExerciseForm from "./edit-exercise-form";
 import { Badge } from "@/components/ui/badge";
+import { useSession } from "next-auth/react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/app/user/@main/_components/page-shell";
 
 function DisplayExercises ({ search }: { search: string }) {
-  const { data: exercises } = api.exercise.getExercises.useQuery()
+  const { data: exercises, isPending, isError } = api.exercise.getExercises.useQuery()
 
   const filterFn = (exercise: Partial<Exercise>, muscles: Muscle[]): boolean => {
     const s = search.toLowerCase()
@@ -30,7 +34,9 @@ function DisplayExercises ({ search }: { search: string }) {
     : []
 
   return (
-    <div className="py-4 md:py-10 grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
+    <div className="grid w-full grid-cols-1 gap-3 py-2 md:grid-cols-2">
+      {isPending && Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-44 rounded-xl" />)}
+      {isError && <div className="col-span-full rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm text-muted-foreground">Exercises could not be loaded.</div>}
       {filteredExercises.map(e => {
         const { muscles, ...exercise } = e
         return (
@@ -42,11 +48,7 @@ function DisplayExercises ({ search }: { search: string }) {
           />
         )
       })}
-      {exercises && exercises.length === 0 && (
-        <div>
-          <p>No exercises added yet</p>
-        </div>
-      )}
+      {!isPending && !isError && filteredExercises.length === 0 && <div className="col-span-full"><EmptyState title={search ? "No exercises match your search" : "No exercises added yet"} description={search ? "Try a different movement or muscle group." : "Create your first exercise to make workout planning faster."} /></div>}
     </div>
   )
 }
@@ -54,8 +56,12 @@ export default memo(DisplayExercises)
 
 
 function ExerciseComponent ({ exercise, muscles, requestToBePublic }: { muscles: Muscle[], exercise: Exercise, requestToBePublic: boolean }) {
+  const { data: session } = useSession()
+  const isOwner = exercise.userId === session?.user.id
+
   return (
-    <div className="bg-secondary/40 p-4 rounded-md flex gap-2">
+    <Card className="transition-colors hover:border-primary/40">
+      <CardContent className="flex gap-3 p-4">
       <div className="flex-grow flex flex-col justify-between">
         <div className="space-y-2">
           <div className="flex items-center">
@@ -76,7 +82,7 @@ function ExerciseComponent ({ exercise, muscles, requestToBePublic }: { muscles:
           </div>
         </div>
       </div>
-      <div className="px-2 flex flex-col gap-2">
+      {isOwner && <div className="px-2 flex flex-col gap-2">
         <EditExercise exercise={exercise} muscleIds={muscles.map(m => m.id)}>
           <Button size="icon" variant="secondary" className="size-7">
             <Pencil />
@@ -87,8 +93,9 @@ function ExerciseComponent ({ exercise, muscles, requestToBePublic }: { muscles:
             <Trash />
           </Button>
         </ConfirmDeleteExercise>
-      </div>
-    </div>
+      </div>}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -116,9 +123,9 @@ function ConfirmDeleteExercise ({ id, children }: { id: string, children: ReactN
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Are you sure you want to delete this exercise?</DialogTitle>
+          <DialogTitle>Archive this exercise?</DialogTitle>
           <DialogDescription>
-                        This action cant be undone.
+            It will disappear from your library, while completed workout history stays intact.
           </DialogDescription>
         </DialogHeader>
 
@@ -148,7 +155,7 @@ function EditExercise ({ exercise, muscleIds, children }: { exercise: Exercise, 
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit muscle</DialogTitle>
+          <DialogTitle>Edit exercise</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
 
