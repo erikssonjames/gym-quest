@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
 
 function formatPrice (amount: number, currency: string) {
@@ -46,6 +47,7 @@ export default function BillingSettings () {
     : 0
   const isPro = subscription?.plan.key === "pro"
   const checkoutState = searchParams.get("checkout")
+  const usageTone = usedPercentage >= 90 ? "danger" : usedPercentage >= 70 ? "warning" : "info"
 
   if (plansPending || subscriptionPending || usagePending) {
     return <div className="space-y-4"><Skeleton className="h-40 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-xl" /><Skeleton className="h-48 w-full rounded-xl" /></div>
@@ -62,7 +64,7 @@ export default function BillingSettings () {
               <CardDescription className="mt-1">Manage your plan, AI allowance, and payment settings from one place.</CardDescription>
             </div>
           </div>
-          <Badge variant={isPro ? "default" : "secondary"}>{subscription?.plan.name ?? "Free"}</Badge>
+          <Badge variant={isPro ? "success" : "secondary"}>{subscription?.plan.name ?? "Free"}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border bg-background/70 p-4"><p className="text-xs text-muted-foreground">Current plan</p><p className="mt-1 text-lg font-semibold">{subscription?.plan.name}</p><p className="mt-1 text-sm text-muted-foreground">{subscription?.plan.description}</p></div>
@@ -78,8 +80,8 @@ export default function BillingSettings () {
       <Card>
         <CardHeader><CardTitle>AI usage this period</CardTitle><CardDescription>Usage is counted on the backend using Gemini's reported input and output tokens. Short bursts are rate-limited separately.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-end justify-between gap-4"><div><p className="text-2xl font-semibold">{usage ? formatTokens(usage.usedTokens + usage.reservedTokens) : "--"} <span className="text-base font-normal text-muted-foreground">of {usage ? formatTokens(usage.quotaTokens) : "--"}</span></p><p className="text-sm text-muted-foreground">{usage?.requestCount ?? 0} completed requests this period</p></div><Gauge className="size-6 text-primary" /></div>
-          <Progress value={usedPercentage} aria-label="AI token usage" />
+          <div className="flex items-end justify-between gap-4"><div><p className="text-2xl font-semibold">{usage ? formatTokens(usage.usedTokens + usage.reservedTokens) : "--"} <span className="text-base font-normal text-muted-foreground">of {usage ? formatTokens(usage.quotaTokens) : "--"}</span></p><p className="text-sm text-muted-foreground">{usage?.requestCount ?? 0} completed requests this period</p></div><Gauge className={cn("size-6", usedPercentage >= 90 ? "text-danger" : usedPercentage >= 70 ? "text-warning" : "text-info")} /></div>
+          <Progress value={usedPercentage} variant={usageTone} aria-label="AI token usage" />
           <p className="text-xs text-muted-foreground">Reserved tokens are held briefly while a request is running, which prevents concurrent requests from exceeding the limit.</p>
         </CardContent>
       </Card>

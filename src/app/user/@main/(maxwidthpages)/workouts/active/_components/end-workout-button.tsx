@@ -15,6 +15,11 @@ export default function EndWorkoutButton ({ workoutSessionId }: { workoutSession
   const { mutate, isPending } = api.workout.endWorkoutSession.useMutation({
     onSuccess: async (sessionId) => {
       await utils.workout.getActiveWorkoutSession.invalidate()
+      await Promise.all([
+        utils.quests.getQuestBoard.invalidate(),
+        utils.progression.getProgression.invalidate(),
+        utils.badges.getBadgesWithProgress.invalidate(),
+      ])
       toast.success("Ended workout.")
 
       if (sessionId) {

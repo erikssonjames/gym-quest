@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "vitest";
 import type { ActiveSession } from "./session-progress";
 import {
   deriveSessionProgress,
@@ -69,8 +68,8 @@ void test("starts the first set when a planned workout has not begun", () => {
 
   const progress = deriveSessionProgress(session);
 
-  assert.equal(progress.kind, "not_started");
-  assert.equal(progress.nextItem?.fragment.id, "set-1");
+  expect(progress.kind).toBe("not_started");
+  expect(progress.nextItem?.fragment.id).toBe("set-1");
 });
 
 void test("keeps the active fragment as the primary action", () => {
@@ -85,7 +84,7 @@ void test("keeps the active fragment as the primary action", () => {
     },
   ]);
 
-  assert.equal(deriveSessionProgress(session).kind, "active_set");
+  expect(deriveSessionProgress(session).kind).toBe("active_set");
 });
 
 void test("moves directly through exercises in the same superset round", () => {
@@ -107,10 +106,9 @@ void test("moves directly through exercises in the same superset round", () => {
 
   const progress = deriveSessionProgress(session);
 
-  assert.equal(progress.kind, "ready_set");
-  assert.equal(progress.nextItem?.fragment.id, "row-1");
-  assert.equal(
-    getFollowingSessionItem(session, "bench-1")?.fragment.id,
+  expect(progress.kind).toBe("ready_set");
+  expect(progress.nextItem?.fragment.id).toBe("row-1");
+  expect(getFollowingSessionItem(session, "bench-1")?.fragment.id).toBe(
     "row-1",
   );
 });
@@ -146,9 +144,9 @@ void test("rests after a completed round and uses the longest round rest target"
 
   const progress = deriveSessionProgress(session);
 
-  assert.equal(progress.kind, "rest");
-  assert.equal(progress.restSeconds, 90);
-  assert.equal(progress.nextItem?.fragment.id, "bench-2");
+  expect(progress.kind).toBe("rest");
+  expect(progress.restSeconds).toBe(90);
+  expect(progress.nextItem?.fragment.id).toBe("bench-2");
 });
 
 void test("counts skipped fragments as resolved but not performed", () => {
@@ -166,8 +164,8 @@ void test("counts skipped fragments as resolved but not performed", () => {
 
   const progress = deriveSessionProgress(session);
 
-  assert.equal(progress.kind, "workout_complete");
-  assert.equal(progress.performedCount, 1);
-  assert.equal(progress.skippedCount, 1);
-  assert.equal(progress.resolvedCount, 2);
+  expect(progress.kind).toBe("workout_complete");
+  expect(progress.performedCount).toBe(1);
+  expect(progress.skippedCount).toBe(1);
+  expect(progress.resolvedCount).toBe(2);
 });

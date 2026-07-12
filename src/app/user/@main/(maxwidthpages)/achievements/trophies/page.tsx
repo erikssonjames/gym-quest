@@ -22,10 +22,10 @@ export default function TrophiesPage () {
       description="A focused view of the milestones you have earned and the next ones within reach."
       actions={<Button asChild variant="outline"><Link href="/user/achievements">View all achievements<ArrowRight data-icon="inline-end" /></Link></Button>}
     >
-      <Card className="border-primary/20 bg-primary/[0.03]">
+      <Card className="border-warning/30 bg-warning/5">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4"><div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Award className="size-6" /></div><div><p className="text-2xl font-semibold">{unlocked} trophies earned</p><p className="text-sm text-muted-foreground">Every trophy is a record of a useful habit.</p></div></div>
-          <Badge variant="outline">{badges?.length ? Math.round((unlocked / badges.length) * 100) : 0}% collected</Badge>
+          <div className="flex items-center gap-4"><div className="flex size-12 items-center justify-center rounded-2xl bg-warning/15 text-warning"><Award className="size-6" /></div><div><p className="text-2xl font-semibold">{unlocked} trophies earned</p><p className="text-sm text-muted-foreground">Every trophy is a record of a useful habit.</p></div></div>
+          <Badge variant="warning">{badges?.length ? Math.round((unlocked / badges.length) * 100) : 0}% collected</Badge>
         </CardContent>
       </Card>
 
@@ -44,8 +44,8 @@ export default function TrophiesPage () {
               return (
                 <Card key={group}>
                   <CardContent className="space-y-4 p-5">
-                    <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{getBadgeGroupName(group as Parameters<typeof getBadgeGroupName>[0])}</p><p className="text-sm text-muted-foreground">{groupUnlocked} of {groupBadges.length} unlocked</p></div><Award className="size-5 text-primary" /></div>
-                    {next ? <><div className="flex items-center gap-2"><LockKeyhole className="size-4 text-muted-foreground" /><p className="text-sm">Next: <span className="font-medium">{next.badge.name}</span></p></div><Progress value={progress} className="h-2" /><p className="text-xs text-muted-foreground">{value} / {next.badge.valueToComplete} {next.badge.valueName}</p></> : <p className="text-sm text-primary">This ladder is complete.</p>}
+                    <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{getBadgeGroupName(group as Parameters<typeof getBadgeGroupName>[0])}</p><p className="text-sm text-muted-foreground">{groupUnlocked} of {groupBadges.length} unlocked</p></div><Award className="size-5 text-warning" /></div>
+                    {next ? <><div className="flex items-center gap-2"><LockKeyhole className="size-4 text-muted-foreground" /><p className="text-sm">Next: <span className="font-medium">{next.badge.name}</span></p></div><Progress value={progress} variant="warning" className="h-2" /><p className="text-xs text-muted-foreground">{value} / {next.badge.valueToComplete} {next.badge.valueName}</p></> : <p className="text-sm text-success">This ladder is complete.</p>}
                   </CardContent>
                 </Card>
               )

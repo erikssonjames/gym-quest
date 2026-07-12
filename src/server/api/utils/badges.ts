@@ -6,6 +6,8 @@ import { BADGE_GROUP_RECORD, BADGE_GROUPS, type BadgeLiteral, type BadgeGroupNam
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { ensureBadgeProgressRows } from "@/server/services/user-provisioning";
+import { awardExperience } from "@/server/services/progression";
+import { getBadgeExperience } from "@/lib/experience";
 
 type Session = WorkoutSession & {
   workoutSessionLogs: Array<
@@ -361,18 +363,29 @@ async function updateConsistentLifterProgress(
 export async function unlockBadge(ctx: NonNullable<TRPCContext>, badgeToUnlock: Badge) {
   const userId = getCtxUserId(ctx);
 
-  await ctx.db.update(badgeProgress).set({
+  const unlocked = await ctx.db.update(badgeProgress).set({
     completed: true,
-  }).where(
-    and(eq(badgeProgress.badgeId, badgeToUnlock.id), eq(badgeProgress.userId, userId)),
-  );
+  }).where(and(
+    eq(badgeProgress.badgeId, badgeToUnlock.id),
+    eq(badgeProgress.userId, userId),
+    eq(badgeProgress.completed, false),
+  )).returning({ id: badgeProgress.id });
+
+  if (unlocked.length > 0) {
+    await awardExperience(ctx.db, {
+      userId,
+      source: "badge",
+      sourceId: badgeToUnlock.id,
+      amount: getBadgeExperience(badgeToUnlock.groupWeighting),
+    });
+  }
 }
 
 /**
  * Count how many consecutive days (including today) have at least 1 workout.
  * If there's a break on a given day, the streak is broken.
  */
-function countConsecutiveWorkoutDays(
+export function countConsecutiveWorkoutDays(
   progressEvents: Array<{ timestamp: Date; value: number }>
 ): number {
   // Put each event’s date (for which value>0) into a set

@@ -1,143 +1,325 @@
 "use client"
 
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { type Muscle } from "@/server/db/schema/body";
-import { type Exercise } from "@/server/db/schema/exercise";
-import { api } from "@/trpc/react";
-import { Loader2Icon, Pencil, Trash } from "lucide-react";
-import { memo, type ReactNode, useState } from "react";
-import { toast } from "sonner";
-import EditExerciseForm from "./edit-exercise-form";
-import { Badge } from "@/components/ui/badge";
-import { useSession } from "next-auth/react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/app/user/@main/_components/page-shell";
+import { useSession } from "next-auth/react"
+import { Dumbbell, Loader2Icon, Pencil, RotateCcw, Search, Trash } from "lucide-react"
+import { memo, type ReactNode, useMemo, useState } from "react"
+import { toast } from "sonner"
 
-function DisplayExercises ({ search }: { search: string }) {
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import type { Muscle } from "@/server/db/schema/body"
+import type { Exercise } from "@/server/db/schema/exercise"
+import { api } from "@/trpc/react"
+import EditExerciseForm from "./edit-exercise-form"
+
+type ExerciseScope = "all" | "mine" | "public"
+type ExerciseSort = "name-asc" | "name-desc" | "muscles-desc"
+
+function DisplayExercises() {
   const { data: exercises, isPending, isError } = api.exercise.getExercises.useQuery()
+  const { data: session } = useSession()
+  const [search, setSearch] = useState("")
+  const [muscleId, setMuscleId] = useState("all")
+  const [scope, setScope] = useState<ExerciseScope>("all")
+  const [sort, setSort] = useState<ExerciseSort>("name-asc")
 
-  const filterFn = (exercise: Partial<Exercise>, muscles: Muscle[]): boolean => {
-    const s = search.toLowerCase()
-    if (exercise?.name?.toLowerCase().includes(s)) return true
-    if (exercise?.description?.includes(s)) return true
-    if (muscles.some(m => m.name.toLowerCase().includes(s))) return true
-    return false
+  const muscles = useMemo(() => {
+    const byId = new Map<string, Muscle>()
+    exercises?.forEach((exercise) => {
+      exercise.muscles.forEach((muscle) => byId.set(muscle.id, muscle))
+    })
+    return [...byId.values()].sort((left, right) => left.name.localeCompare(right.name))
+  }, [exercises])
+
+  const filteredExercises = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+
+    return (exercises ?? [])
+      .filter((exercise) => {
+        const matchesSearch = normalizedSearch.length === 0 || [
+          exercise.name,
+          exercise.description,
+          ...exercise.muscles.map((muscle) => muscle.name),
+        ].some((value) => value.toLowerCase().includes(normalizedSearch))
+        const matchesMuscle = muscleId === "all" || exercise.muscles.some((muscle) => muscle.id === muscleId)
+        const matchesScope = scope === "all"
+          || (scope === "mine" && exercise.userId === session?.user.id)
+          || (scope === "public" && exercise.isPublic)
+
+        return matchesSearch && matchesMuscle && matchesScope
+      })
+      .sort((left, right) => {
+        if (sort === "name-desc") return right.name.localeCompare(left.name)
+        if (sort === "muscles-desc") return right.muscles.length - left.muscles.length || left.name.localeCompare(right.name)
+        return left.name.localeCompare(right.name)
+      })
+  }, [exercises, muscleId, scope, search, session?.user.id, sort])
+
+  const hasFilters = search.length > 0 || muscleId !== "all" || scope !== "all" || sort !== "name-asc"
+  const resetFilters = () => {
+    setSearch("")
+    setMuscleId("all")
+    setScope("all")
+    setSort("name-asc")
   }
 
-  const filteredExercises = exercises
-    ? exercises
-      .filter(e => filterFn(
-        { name: e.name, description: e.description }, e.muscles
-      )).sort((a, b) => a.name.localeCompare(b.name))
-    : []
-
   return (
-    <div className="grid w-full grid-cols-1 gap-3 py-2 md:grid-cols-2">
-      {isPending && Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-44 rounded-xl" />)}
-      {isError && <div className="col-span-full rounded-lg border border-destructive/30 bg-destructive/5 p-5 text-sm text-muted-foreground">Exercises could not be loaded.</div>}
-      {filteredExercises.map(e => {
-        const { muscles, ...exercise } = e
-        return (
-          <ExerciseComponent 
-            key={e.id} 
-            muscles={muscles} 
-            exercise={exercise} 
-            requestToBePublic={e.requestToBePublic !== null && !e.isPublic}
-          />
-        )
-      })}
-      {!isPending && !isError && filteredExercises.length === 0 && <div className="col-span-full"><EmptyState title={search ? "No exercises match your search" : "No exercises added yet"} description={search ? "Try a different movement or muscle group." : "Create your first exercise to make workout planning faster."} /></div>}
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader className="gap-1 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-lg">Filter the library</CardTitle>
+            <Badge variant="info">
+              {filteredExercises.length} of {exercises?.length ?? 0} exercises
+            </Badge>
+          </div>
+          <CardDescription>Search broadly, then narrow by muscle or ownership.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-12">
+          <InputGroup className="min-w-0 md:col-span-2 xl:col-span-4">
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={search}
+              placeholder="Search exercises or muscles"
+              aria-label="Search exercises"
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </InputGroup>
+
+          <Select value={muscleId} onValueChange={setMuscleId}>
+            <SelectTrigger className="min-w-0 xl:col-span-2" aria-label="Filter by muscle">
+              <SelectValue placeholder="All muscles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">All muscles</SelectItem>
+                {muscles.map((muscle) => (
+                  <SelectItem key={muscle.id} value={muscle.id}>{muscle.name}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <Select value={scope} onValueChange={(value) => setScope(value as ExerciseScope)}>
+            <SelectTrigger className="min-w-0 xl:col-span-2" aria-label="Filter by visibility">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">All exercises</SelectItem>
+                <SelectItem value="mine">Created by me</SelectItem>
+                <SelectItem value="public">Public exercises</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <Select value={sort} onValueChange={(value) => setSort(value as ExerciseSort)}>
+            <SelectTrigger className="min-w-0 xl:col-span-2" aria-label="Sort exercises">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="name-asc">Name A–Z</SelectItem>
+                <SelectItem value="name-desc">Name Z–A</SelectItem>
+                <SelectItem value="muscles-desc">Most muscles</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <Button className="min-w-0 xl:col-span-2" variant="outline" onClick={resetFilters} disabled={!hasFilters}>
+            <RotateCcw data-icon="inline-start" />
+            Reset
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {isPending && Array.from({ length: 6 }).map((_, index) => (
+          <Skeleton key={index} className="h-64 rounded-xl" />
+        ))}
+
+        {isError && (
+          <Empty className="col-span-full border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><Dumbbell /></EmptyMedia>
+              <EmptyTitle>Exercises could not be loaded</EmptyTitle>
+              <EmptyDescription>Refresh the page to reconnect to your movement library.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+
+        {filteredExercises.map((item) => {
+          const { muscles: exerciseMuscles, requestToBePublic, ...exercise } = item
+          return (
+            <ExerciseCard
+              key={item.id}
+              muscles={exerciseMuscles}
+              exercise={exercise}
+              requestToBePublic={requestToBePublic !== null && !item.isPublic}
+              isOwner={item.userId === session?.user.id}
+            />
+          )
+        })}
+
+        {!isPending && !isError && filteredExercises.length === 0 && (
+          <Empty className="col-span-full border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><Search /></EmptyMedia>
+              <EmptyTitle>{hasFilters ? "No exercises match these filters" : "No exercises added yet"}</EmptyTitle>
+              <EmptyDescription>
+                {hasFilters
+                  ? "Try a broader search, another muscle group, or reset the filters."
+                  : "Create your first exercise to make workout planning faster."}
+              </EmptyDescription>
+            </EmptyHeader>
+            {hasFilters && (
+              <EmptyContent>
+                <Button variant="outline" onClick={resetFilters}>Reset filters</Button>
+              </EmptyContent>
+            )}
+          </Empty>
+        )}
+      </div>
     </div>
   )
 }
+
 export default memo(DisplayExercises)
 
-
-function ExerciseComponent ({ exercise, muscles, requestToBePublic }: { muscles: Muscle[], exercise: Exercise, requestToBePublic: boolean }) {
-  const { data: session } = useSession()
-  const isOwner = exercise.userId === session?.user.id
-
+function ExerciseCard({
+  exercise,
+  muscles,
+  requestToBePublic,
+  isOwner,
+}: {
+  muscles: Muscle[]
+  exercise: Exercise
+  requestToBePublic: boolean
+  isOwner: boolean
+}) {
   return (
-    <Card className="transition-colors hover:border-primary/40">
-      <CardContent className="flex gap-3 p-4">
-      <div className="flex-grow flex flex-col justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <p className="inline-block font-semibold pe-2">{exercise.name}</p>
-            {exercise.isPublic && <Badge>Public</Badge>}
-            {requestToBePublic && <Badge variant="outline">Pending Request</Badge>}
+    <Card className="flex h-full flex-col transition-colors hover:border-info/40">
+      <CardHeader className="gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-info/10 text-info">
+            <Dumbbell className="size-5" aria-hidden="true" />
           </div>
-          <p className="text-xs">{exercise.description}</p>
-        </div>
-        <div className="">
-          <p className="text-xs text-muted-foreground mt-4">Muscles worked</p>
-          <div className="flex flex-wrap gap-1 pt-2">
-            {muscles.map(muscle => (
-              <div className="flex items-center justify-center w-fit px-2 py-1 rounded-sm bg-secondary/40" key={`${muscle.id}-muscle-badge`}>
-                <p className="text-xs whitespace-nowrap">{muscle.name}</p>
-              </div>
-            ))}
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {exercise.isPublic ? (
+              <Badge variant="info">Public</Badge>
+            ) : requestToBePublic ? (
+              <Badge variant="warning">Pending review</Badge>
+            ) : (
+              <Badge variant="secondary">Personal</Badge>
+            )}
           </div>
         </div>
-      </div>
-      {isOwner && <div className="px-2 flex flex-col gap-2">
-        <EditExercise exercise={exercise} muscleIds={muscles.map(m => m.id)}>
-          <Button size="icon" variant="secondary" className="size-7">
-            <Pencil />
-          </Button>
-        </EditExercise>
-        <ConfirmDeleteExercise id={exercise.id}>
-          <Button size="icon" variant="destructive" className="size-7">
-            <Trash />
-          </Button>
-        </ConfirmDeleteExercise>
-      </div>}
+        <div className="flex flex-col gap-1.5">
+          <CardTitle className="text-lg leading-snug">{exercise.name}</CardTitle>
+          <CardDescription className="line-clamp-3 leading-6">{exercise.description}</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Muscles worked</p>
+        <div className="flex flex-wrap gap-1.5">
+          {muscles.length > 0 ? muscles.map((muscle) => (
+            <Badge key={muscle.id} variant="outline">{muscle.name}</Badge>
+          )) : <span className="text-sm text-muted-foreground">No muscles assigned</span>}
+        </div>
       </CardContent>
+      <CardFooter className="justify-between gap-3 border-t pt-4">
+        <span className="text-xs text-muted-foreground">
+          {muscles.length} muscle{muscles.length === 1 ? "" : "s"}
+        </span>
+        {isOwner && (
+          <div className="flex items-center gap-2">
+            <EditExercise exercise={exercise} muscleIds={muscles.map((muscle) => muscle.id)}>
+              <Button size="icon" variant="outline" aria-label={`Edit ${exercise.name}`}>
+                <Pencil data-icon="inline-start" />
+              </Button>
+            </EditExercise>
+            <ConfirmDeleteExercise id={exercise.id} name={exercise.name}>
+              <Button size="icon" variant="destructive" aria-label={`Archive ${exercise.name}`}>
+                <Trash data-icon="inline-start" />
+              </Button>
+            </ConfirmDeleteExercise>
+          </div>
+        )}
+      </CardFooter>
     </Card>
   )
 }
 
-function ConfirmDeleteExercise ({ id, children }: { id: string, children: ReactNode }) {
+function ConfirmDeleteExercise({ id, name, children }: { id: string; name: string; children: ReactNode }) {
   const utils = api.useUtils()
   const { mutateAsync, isPending } = api.exercise.deleteExercise.useMutation({
-    onSuccess: () => utils.exercise.getExercises.invalidate()
+    onSuccess: () => utils.exercise.getExercises.invalidate(),
   })
   const [open, setOpen] = useState(false)
 
   const onDelete = async () => {
     try {
       await mutateAsync({ id })
-      toast.success('Exercise Deleted.')
+      toast.success("Exercise archived.")
       setOpen(false)
-    } catch (e) {
-      toast.error('Failed to remove exercise')
+    } catch {
+      toast.error("Failed to archive exercise.")
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => setOpen(v)}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Archive this exercise?</DialogTitle>
+          <DialogTitle>Archive {name}?</DialogTitle>
           <DialogDescription>
             It will disappear from your library, while completed workout history stays intact.
           </DialogDescription>
         </DialogHeader>
-
-        <DialogFooter className="sm:justify-start">
-          <DialogClose asChild>
-            <Button type="button" variant="secondary">
-                            Close
-            </Button>
-          </DialogClose>
+        <DialogFooter>
+          <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
           <Button type="button" variant="destructive" onClick={onDelete} disabled={isPending}>
-                        Delete
-            {isPending && <Loader2Icon className="animate-spin" />}
+            Archive
+            {isPending && <Loader2Icon data-icon="inline-end" className="animate-spin" />}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -145,29 +327,32 @@ function ConfirmDeleteExercise ({ id, children }: { id: string, children: ReactN
   )
 }
 
-function EditExercise ({ exercise, muscleIds, children }: { exercise: Exercise, muscleIds: Array<string>, children: ReactNode }) {
+function EditExercise({
+  exercise,
+  muscleIds,
+  children,
+}: {
+  exercise: Exercise
+  muscleIds: string[]
+  children: ReactNode
+}) {
   const [open, setOpen] = useState(false)
 
   return (
-    <Dialog open={open} onOpenChange={(v) => setOpen(v)}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit exercise</DialogTitle>
-          <DialogDescription></DialogDescription>
+          <DialogDescription>Update the movement details and assigned muscle groups.</DialogDescription>
         </DialogHeader>
-
-        <EditExerciseForm 
+        <EditExerciseForm
           exercise={exercise}
           muscleIds={muscleIds}
           closeFn={() => setOpen(false)}
           closeElement={(
             <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                                Close
-              </Button>
+              <Button type="button" variant="secondary">Close</Button>
             </DialogClose>
           )}
         />

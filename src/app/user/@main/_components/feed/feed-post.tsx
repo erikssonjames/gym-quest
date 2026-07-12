@@ -1,14 +1,14 @@
 "use client"
 
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RouterOutputs } from "@/trpc/react";
 import PostContainer from "./post-container";
 
-type FeedPostItem = RouterOutputs["feed"]["getLatestPosts"][number];
+type FeedPostItem = RouterOutputs["feed"]["getLatestPosts"]["items"][number];
 
 interface FeedPostProps {
   post: FeedPostItem
@@ -26,23 +26,26 @@ export default function FeedPost ({ post }: FeedPostProps) {
     || "GQ";
 
   return (
-    <PostContainer className="border-border/70 bg-card/90 shadow-sm">
-      <CardHeader className="flex-row items-start justify-between gap-4 p-6">
-        <div className="flex min-w-0 gap-3">
+    <PostContainer>
+      <CardHeader className="flex-row items-start gap-3 p-5 pb-4">
+        <Link href={`/user/profile/${post.author.id}`} aria-label={`View ${authorName}'s profile`}>
           <Avatar className="size-10">
             {authorImage ? <AvatarImage src={authorImage} alt={authorName} /> : null}
             <AvatarFallback>{initials.toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0">
-            <CardTitle className="truncate text-base">{authorName}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {formatDistanceToNow(post.createdAt, { addSuffix: true })}
-            </p>
-          </div>
+        </Link>
+        <div className="min-w-0">
+          <CardTitle className="truncate text-base">
+            <Link href={`/user/profile/${post.author.id}`} className="hover:underline">
+              {authorName}
+            </Link>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+          </p>
         </div>
-        <Badge variant="outline">Update</Badge>
       </CardHeader>
-      <CardContent className="p-6 pt-0">
+      <CardContent className="px-5 pb-5 pt-0">
         <p className="whitespace-pre-wrap text-sm leading-7">{post.content}</p>
       </CardContent>
     </PostContainer>

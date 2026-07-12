@@ -40,6 +40,7 @@ import { notification, workoutReviewNotification } from "@/server/db/schema/noti
 import { WorkoutNotifications } from "@/socket/enums/notifications";
 import { WorkoutAiChatInputZod } from "@/server/ai/workout-schema";
 import { GeminiNotConfiguredError, generateWorkoutAiResponse, resolveWorkoutDraft } from "@/server/ai/gemini";
+import { assessWorkoutDraftQuality } from "@/server/ai/workout-quality";
 import { workoutAiDailyLimiter, workoutAiMinuteLimiter } from "@/server/limiters";
 import { AiQuotaExceededError, estimateWorkoutAiTokens, finalizeAiTokens, releaseAiTokens, reserveAiTokens } from "@/server/services/ai-usage";
 import { getEffectiveBillingPlan } from "@/server/services/billing-catalog";
@@ -266,6 +267,19 @@ export const workoutRouter = createTRPCRouter({
         return {
           phase: response.phase,
           assistantMessage: response.assistantMessage,
+          draft: null,
+        }
+      }
+
+      const draftQuality = assessWorkoutDraftQuality({
+        draft: response.draft,
+        messages: input.messages,
+        exerciseCatalog,
+      })
+      if (!draftQuality.accepted) {
+        return {
+          phase: "clarifying" as const,
+          assistantMessage: draftQuality.assistantMessage,
           draft: null,
         }
       }

@@ -1,15 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react";
-import { Loader2, Send } from "lucide-react";
+import { ChevronDown, Loader2, Send } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { CardContent, CardHeader } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
@@ -21,6 +21,7 @@ export default function PostComposer () {
   const { data: session } = useSession();
   const utils = api.useUtils();
   const [content, setContent] = useState("");
+  const [open, setOpen] = useState(false);
 
   const displayName = session?.user.name ?? session?.user.email ?? "You";
   const initials = useMemo(() => {
@@ -35,6 +36,7 @@ export default function PostComposer () {
   const { mutate, isPending } = api.feed.createPost.useMutation({
     onSuccess: () => {
       setContent("");
+      setOpen(false);
       void utils.feed.getLatestPosts.invalidate();
       toast.success("Post added to the feed.");
     },
@@ -44,66 +46,62 @@ export default function PostComposer () {
   });
 
   return (
-    <PostContainer className="border-primary/20 bg-card/95 shadow-sm">
-      <CardHeader className="gap-2 p-5 pb-0">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <CardTitle className="text-lg">Share your progress</CardTitle>
-            <CardDescription>Give your training circle something to cheer for.</CardDescription>
-          </div>
-          <Badge variant="secondary">New post</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="p-5 pt-5">
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!trimmedContent) return;
-            mutate({ content: trimmedContent });
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <Avatar className="size-10">
-              {session?.user.image ? <AvatarImage src={session.user.image} alt={displayName} /> : null}
-              <AvatarFallback>{initials.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="truncate text-sm font-medium">{displayName}</p>
-                <p className="text-xs text-muted-foreground">Post to news feed</p>
-              </div>
-              <div
-                className={cn(
-                  "rounded-md border bg-background transition-colors",
-                  trimmedContent ? "border-primary/40" : "border-input"
-                )}
-              >
-                <Textarea
-                  aria-label="Post content"
-                  className="min-h-[92px] resize-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                  maxLength={MAX_POST_LENGTH}
-                  placeholder="Share a training update, progress win, or question..."
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              {showCharacterCount ? `${remainingCharacters} characters left` : "What is new in your training today?"}
-            </p>
-            <Button className="min-w-24" disabled={isPending || !trimmedContent} type="submit">
-              {isPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Send data-icon="inline-start" />}
-              Post
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <PostContainer className="shadow-sm">
+        <CardHeader className="p-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="h-auto w-full justify-start gap-3 px-2 py-2">
+              <Avatar className="size-9">
+                {session?.user.image ? <AvatarImage src={session.user.image} alt={displayName} /> : null}
+                <AvatarFallback>{initials.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+                Share a progress update...
+              </span>
+              <ChevronDown
+                data-icon="inline-end"
+                aria-hidden="true"
+                className={cn("transition-transform", open && "rotate-180")}
+              />
             </Button>
-          </div>
-        </form>
-      </CardContent>
-    </PostContainer>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="px-5 pb-5 pt-1">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!trimmedContent) return;
+                mutate({ content: trimmedContent });
+              }}
+            >
+              <FieldGroup className="gap-3">
+                <Field>
+                  <FieldLabel htmlFor="feed-post-content" className="sr-only">Post content</FieldLabel>
+                  <Textarea
+                    id="feed-post-content"
+                    className="min-h-24 resize-none"
+                    maxLength={MAX_POST_LENGTH}
+                    placeholder="What changed in your training today?"
+                    value={content}
+                    onChange={(event) => setContent(event.target.value)}
+                    autoFocus
+                  />
+                </Field>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {showCharacterCount ? `${remainingCharacters} characters left` : "Visible to your training circle."}
+                  </p>
+                  <Button disabled={isPending || !trimmedContent} type="submit">
+                    {isPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Send data-icon="inline-start" />}
+                    Post
+                  </Button>
+                </div>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </CollapsibleContent>
+      </PostContainer>
+    </Collapsible>
   )
 }

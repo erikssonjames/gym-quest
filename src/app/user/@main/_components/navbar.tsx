@@ -12,6 +12,8 @@ import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, Dr
 import { Button } from "@/components/ui/button";
 import Notifications from "./notifications";
 import SendFeedback from "./send-feedback";
+import WeightReminder from "./weight-reminder";
+import ExperienceDisplay from "./experience-display";
 
 const ITEMS_TO_DISPLAY = 3
 
@@ -136,7 +138,9 @@ export default function Navbar () {
         </Breadcrumb>
       </div>
       
-      <div className="flex gap-2 items-center">
+      <div className="flex items-center gap-1 px-4 sm:gap-2">
+        <ExperienceDisplay />
+        <WeightReminder />
         <SendFeedback />
         <Notifications />
       </div>

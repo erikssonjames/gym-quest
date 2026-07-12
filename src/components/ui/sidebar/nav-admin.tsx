@@ -23,8 +23,8 @@ export function NavAdmin({
   if (session.data?.user.role !== "admin") return null
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Admin stuff</SidebarGroupLabel>
+    <SidebarGroup>
+      <SidebarGroupLabel>Administration</SidebarGroupLabel>
       <SidebarMenu>
         {adminItem.map((item) => (
           <SidebarMenuItem key={item.title}>

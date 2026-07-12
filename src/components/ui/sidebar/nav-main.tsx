@@ -1,6 +1,8 @@
 "use client"
 
 import { ChevronRight, Plus } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 import {
   Collapsible,
@@ -11,6 +13,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -18,85 +21,123 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useDisplayTimer } from "@/hooks/use-display-timer"
 import { api } from "@/trpc/react"
 import { type SidebarItem } from "./app-sidebar"
-import { useDisplayTimer } from "@/hooks/use-display-timer"
-import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from "../tooltip"
+
+type NavigationGroup = {
+  label: string
+  items: SidebarItem[]
+}
 
 export function NavMain({
-  items,
+  groups,
   isActive,
-  isPartiallyActive
+  isPartiallyActive,
 }: {
-  items: SidebarItem[],
-  isActive: (url: string) => boolean,
+  groups: NavigationGroup[]
+  isActive: (url: string) => boolean
   isPartiallyActive: (url: string) => boolean
 }) {
   const { open } = useSidebar()
   const router = useRouter()
+  const { data: questBoard } = api.quests.getQuestBoard.useQuery()
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Training</SidebarGroupLabel>
-      <SidebarMenu>
-        {items.map((item) => (
-          <Collapsible
-            key={item.title}
-            asChild
-            defaultOpen={isPartiallyActive(item.url)}
-            className="group/collapsible"
-            disabled={item.disabled}
-          >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton 
-                  tooltip={item.title} 
-                  isActive={isActive(item.url) || isPartiallyActive(item.url)}
-                  onClick={() => {
-                    if (!item.items?.length || !open) router.push(item.url)
-                  }}
-                  className="group/menu-button"
+    <>
+      {groups.map((group) => (
+        <SidebarGroup key={group.label}>
+          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarMenu>
+            {group.items.map((item) => {
+              const rewardsReady = item.url === "/user/quests"
+                ? questBoard?.collectableCount ?? 0
+                : 0
+              const itemIsActive = isActive(item.url) || isPartiallyActive(item.url)
+
+              if (!item.items?.length) {
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={rewardsReady ? `${item.title}: ${rewardsReady} rewards ready` : item.title}
+                      isActive={itemIsActive}
+                      disabled={item.disabled}
+                    >
+                      <Link href={item.url}>
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    {rewardsReady > 0 && (
+                      <SidebarMenuBadge aria-label={`${rewardsReady} quest rewards ready to collect`}>
+                        {rewardsReady}
+                      </SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                )
+              }
+
+              return (
+                <Collapsible
+                  key={item.title}
+                  asChild
+                  defaultOpen={isPartiallyActive(item.url)}
+                  className="group/collapsible"
+                  disabled={item.disabled}
                 >
-                  {item.icon && <item.icon className="group-data-[active=true]/menu-button:text-primary" />}
-                  <span className="">{item.title}</span>
-                  {item.items?.length ? <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" /> : null}
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
-                    subItem.title === "Active Workout" ? (
-                      <ActiveWorkoutItem key={subItem.title} subItem={subItem} isActive={isActive} />
-                    ) : (
-                      subItem.disabled ? (
-                        null
-                      ) : (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton 
-                            asChild 
-                            isActive={isActive(subItem.url)}
-                          >
-                            <Link href={subItem.url}>
-                              <span>{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      )
-                    )
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        ))}
-      </SidebarMenu>
-    </SidebarGroup>
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        tooltip={item.title}
+                        isActive={itemIsActive}
+                        onClick={() => {
+                          if (!open) router.push(item.url)
+                        }}
+                      >
+                        {item.icon && <item.icon />}
+                        <span>{item.title}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {item.items.map((subItem) => (
+                          subItem.title === "Active Workout" ? (
+                            <ActiveWorkoutItem key={subItem.title} subItem={subItem} isActive={isActive} />
+                          ) : (
+                            !subItem.disabled && (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <SidebarMenuSubButton asChild isActive={isActive(subItem.url)}>
+                                  <Link href={subItem.url}>
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            )
+                          )
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
+      ))}
+    </>
   )
 }
 
-function ActiveWorkoutItem ({ isActive, subItem }:  { isActive: (url: string) => boolean, subItem: SidebarItem }) {
+function ActiveWorkoutItem({
+  isActive,
+  subItem,
+}: {
+  isActive: (url: string) => boolean
+  subItem: SidebarItem
+}) {
   const { data: activeSession } = api.workout.getActiveWorkoutSession.useQuery()
   const timePassed = useDisplayTimer(activeSession?.startedAt ?? undefined)
   const timerText = activeSession?.startedAt ? timePassed : "Ready"
@@ -107,36 +148,34 @@ function ActiveWorkoutItem ({ isActive, subItem }:  { isActive: (url: string) =>
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <SidebarMenuSubButton asChild isActive={isActive(subItem.url)} className="relative border border-primary border-dashed">
+              <SidebarMenuSubButton asChild isActive={isActive(subItem.url)} className="relative border border-dashed border-primary">
                 <Link href={subItem.url}>
                   <span>{subItem.title}</span>
-                  <div className="absolute z-10 right-0 bg-sidebar/20 top-0 bottom-0 flex flex-col items-center justify-center px-2 backdrop-blur-sm">
-                    <p>{timerText}</p>
-                  </div>
+                  <span className="absolute inset-y-0 right-0 flex items-center bg-sidebar/80 px-2 backdrop-blur-sm">
+                    {timerText}
+                  </span>
                 </Link>
               </SidebarMenuSubButton>
             </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent align="start" side="right" className="z-50">
-                <div className="flex gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Workout</p>
-                    <p>{activeSession.workout?.name ?? "Empty workout"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Started</p>
-                    <p>{activeSession.startedAt ? activeSession.startedAt.toTimeString().split("GMT")[0] : "Not started"}</p>
-                  </div>
+            <TooltipContent align="start" side="right">
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Workout</p>
+                  <p>{activeSession.workout?.name ?? "Empty workout"}</p>
                 </div>
-              </TooltipContent>
-            </TooltipPortal>
+                <div>
+                  <p className="text-xs text-muted-foreground">Started</p>
+                  <p>{activeSession.startedAt ? activeSession.startedAt.toTimeString().split("GMT")[0] : "Not started"}</p>
+                </div>
+              </div>
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <SidebarMenuSubButton asChild isActive={isActive("/user/workouts/active/create")} className="relative border border-dashed">
+        <SidebarMenuSubButton asChild isActive={isActive("/user/workouts/active/create")} className="border border-dashed">
           <Link href="/user/workouts/active/create">
             <Plus />
-            <p>Start new Workout</p>
+            <span>Start new workout</span>
           </Link>
         </SidebarMenuSubButton>
       )}

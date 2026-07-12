@@ -10,7 +10,7 @@ export default async function BrowseWorkoutsPage () {
 
   return (
     <PageShell eyebrow="Community library" title="Browse workouts" description="Find public plans that fit your time, equipment, and current training focus." actions={<Button asChild variant="outline"><Link href="/user/workouts/manage/create">Create your own<ArrowRight data-icon="inline-end" /></Link></Button>}>
-      <DisplayWorkouts workouts={workouts} loading={false} />
+      <DisplayWorkouts workouts={workouts} loading={false} library="community" />
     </PageShell>
   )
 }

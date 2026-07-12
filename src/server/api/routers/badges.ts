@@ -10,10 +10,14 @@ import { getCtxUserId } from "@/server/utils/user";
 import { TRPCError } from "@trpc/server";
 import { userProfile, users } from "@/server/db/schema/user";
 import { ensureBadgeProgressRows } from "@/server/services/user-provisioning";
+import { countConsecutiveWorkoutDays } from "@/server/api/utils/badges";
+import { ensureEarlyUserBadge } from "@/server/services/progression";
 
 export const badgesRouter = createTRPCRouter({
   getBadges: protectedProcedure
     .query(async ({ ctx }) => {
+      await ensureBadgeProgressRows(ctx.db, getCtxUserId(ctx))
+      await ensureEarlyUserBadge(ctx.db, getCtxUserId(ctx))
       return await ctx.db.query.badge.findMany()
     }),
 
@@ -21,6 +25,7 @@ export const badgesRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       const userId = getCtxUserId(ctx)
       await ensureBadgeProgressRows(ctx.db, userId)
+      await ensureEarlyUserBadge(ctx.db, userId)
 
       const rows = await ctx.db
         .select()
@@ -34,19 +39,37 @@ export const badgesRouter = createTRPCRouter({
         where: eq(badgeProgress.userId, userId),
         with: { progressEvents: true },
       })
-      const currentValueByBadgeId = new Map(
-        progressRows.map((progress) => [
-          progress.badgeId,
-          progress.progressEvents.reduce((highest, event) => Math.max(highest, event.value), 0),
+      const badgeById = new Map(rows.map((row) => [row.badge.id, row.badge]))
+      const progressEventsByGroup = new Map<string, Array<{ timestamp: Date; value: number }>>()
+
+      for (const progress of progressRows) {
+        const group = badgeById.get(progress.badgeId)?.group
+        if (!group) continue
+        progressEventsByGroup.set(group, [
+          ...(progressEventsByGroup.get(group) ?? []),
+          ...progress.progressEvents,
         ])
-      )
+      }
+
+      const currentValueForBadge = (badgeId: string, completed: boolean) => {
+        const badgeDetails = badgeById.get(badgeId)
+        if (!badgeDetails) return 0
+        if (badgeDetails.group === "early_user") return completed ? 1 : 0
+
+        const events = progressEventsByGroup.get(badgeDetails.group) ?? []
+        if (badgeDetails.group === "consistent_lifter") {
+          return countConsecutiveWorkoutDays(events)
+        }
+
+        return events.reduce((total, event) => total + event.value, 0)
+      }
 
       return rows.map((row) => ({
         badge: row.badge,
         badgeProgress: row.badgeProgress
           ? {
               ...row.badgeProgress,
-              currentValue: currentValueByBadgeId.get(row.badgeProgress.badgeId) ?? 0,
+              currentValue: currentValueForBadge(row.badgeProgress.badgeId, row.badgeProgress.completed),
             }
           : null,
       }))

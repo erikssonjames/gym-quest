@@ -8,11 +8,11 @@ export default function Dashboard() {
   return (
     <DynamicLayout>
       <section className="h-full overflow-y-auto bg-muted/20">
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-5 md:px-6 md:py-7 lg:grid-cols-[minmax(0,48rem)_16rem] lg:justify-center xl:grid-cols-[minmax(0,52rem)_18rem]">
+        <div className="mx-auto grid w-full max-w-6xl justify-center gap-6 px-4 py-4 md:px-6 md:py-6 lg:grid-cols-[minmax(0,42rem)_18rem]">
           <main className="min-w-0">
             <Feed />
           </main>
-          <aside className="hidden lg:block">
+          <aside className="sticky top-4 hidden h-fit lg:block">
             <FeedSidebar />
           </aside>
         </div>

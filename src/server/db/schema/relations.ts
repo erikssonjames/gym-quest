@@ -7,6 +7,8 @@ import { friendRequestNotification, notification, workoutReviewNotification } fr
 import { badge, badgeProgress, badgeProgressEvent } from "./badges"
 import { feedPost } from "./feed"
 import { aiUsageEvent, aiUsagePeriod, billingCustomer, billingEntitlement, billingPlan, billingPrice, billingSubscription, ownerRevenueLedger } from "./billing"
+import { weightEntry } from "./weight"
+import { experienceEvent, questClaim } from "./progression"
 
 // User
 
@@ -26,6 +28,21 @@ export const userRelations = relations(users, ({ many, one }) => ({
   billingSubscriptions: many(billingSubscription),
   aiUsagePeriods: many(aiUsagePeriod),
   aiUsageEvents: many(aiUsageEvent),
+  weightEntries: many(weightEntry),
+  experienceEvents: many(experienceEvent),
+  questClaims: many(questClaim),
+}))
+
+export const experienceEventRelations = relations(experienceEvent, ({ one }) => ({
+  user: one(users, { fields: [experienceEvent.userId], references: [users.id] }),
+}))
+
+export const questClaimRelations = relations(questClaim, ({ one }) => ({
+  user: one(users, { fields: [questClaim.userId], references: [users.id] }),
+}))
+
+export const weightEntryRelations = relations(weightEntry, ({ one }) => ({
+  user: one(users, { fields: [weightEntry.userId], references: [users.id] }),
 }))
 
 export const billingPlanRelations = relations(billingPlan, ({ many }) => ({

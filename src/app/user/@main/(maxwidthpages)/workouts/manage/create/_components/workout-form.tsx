@@ -11,8 +11,9 @@ import {
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2Icon } from "lucide-react";
+import { Dumbbell, ListChecks, Loader2Icon, Plus, Sparkles } from "lucide-react";
 import { api } from "@/trpc/react";
 import { 
   type CreateWorkoutInput,
@@ -22,7 +23,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import CreateSetForm from "./sets-form";
 import { useSearchParamsFn } from "@/hooks/use-search-params-fn";
 import { SearchParam } from "@/variables/url";
-import { FloatingLabelInput } from "@/components/ui/floating-label-input";
 import SelectExercise from "./select-exercise";
 import { DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable"
@@ -30,11 +30,19 @@ import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifi
 import { useEffect } from "react";
 import { useState } from "react";
 import { useLocalStorage } from "@/hooks/use-localstorage";
-import ScrollContainerFadingEdges from "@/components/ui/scroll-container-fading-edges";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { ListChecks, Sparkles } from "lucide-react";
 import AiWorkoutChat from "./ai-workout-chat";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 export default function CreateWorkoutForm() {
   const [builderMode, setBuilderMode] = useState<"manual" | "ai">("manual")
@@ -148,152 +156,198 @@ export default function CreateWorkoutForm() {
     }
   }
 
+  if (builderMode === "ai") {
+    return (
+      <AiWorkoutChat
+        onExit={() => setBuilderMode("manual")}
+        onApplyDraft={(draft) => {
+          form.reset({
+            ...draft,
+            isPublic: form.getValues("isPublic"),
+          })
+          setBuilderMode("manual")
+          toast.success("AI workout added to the builder. Review it, then create it when ready.")
+        }}
+      />
+    )
+  }
+
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmitWorkout)}
-        className="gap-6 flex flex-col min-h-0 h-full"
+        className="flex flex-col gap-3 pb-4"
       >
-        <div className="flex flex-col gap-3 rounded-xl border bg-card/60 p-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold">Build your workout</p>
-            <p className="text-xs text-muted-foreground">
-              Start manually or use the co-pilot to shape a draft through conversation.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="flex gap-2" role="group" aria-label="Workout builder mode">
-              <Button
-                type="button"
-                size="sm"
-                variant={builderMode === "manual" ? "default" : "outline"}
-                aria-pressed={builderMode === "manual"}
-                onClick={() => setBuilderMode("manual")}
-              >
-                <ListChecks className="size-4" />
-                Manual
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={builderMode === "ai" ? "default" : "outline"}
-                aria-pressed={builderMode === "ai"}
-                onClick={() => setBuilderMode("ai")}
-              >
-                <Sparkles className="size-4" />
-                AI assist
-              </Button>
-            </div>
-            <Button type="submit" size="sm" disabled={isPending || builderMode === "ai"}>
-              {isPending ? <Loader2Icon className="size-4 animate-spin" /> : builderMode === "ai" ? <Sparkles className="size-4" /> : null}
-              {builderMode === "ai" ? "Waiting for AI draft" : "Create workout"}
-            </Button>
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-muted-foreground">Build with</p>
+          <ToggleGroup
+            type="single"
+            value={builderMode}
+            onValueChange={(value) => {
+              if (value === "manual" || value === "ai") setBuilderMode(value)
+            }}
+            variant="outline"
+            size="sm"
+            aria-label="Workout builder mode"
+          >
+            <ToggleGroupItem value="manual" aria-label="Use the manual builder">
+              <ListChecks />
+              Manual
+            </ToggleGroupItem>
+            <ToggleGroupItem value="ai" aria-label="Use AI assist">
+              <Sparkles />
+              AI
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
-        {builderMode === "ai" && (
-          <AiWorkoutChat
-            onApplyDraft={(draft) => {
-              form.reset({
-                ...draft,
-                isPublic: form.getValues("isPublic"),
-              })
-              setBuilderMode("manual")
-              toast.success("AI draft applied. Review it before creating the workout.")
-            }}
-          />
-        )}
+        <Card className="shadow-sm">
+          <CardHeader className="p-4 pb-3">
+            <CardTitle className="text-base">Workout details</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 p-4 pt-0">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Workout name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Upper-body strength" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Strength" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        <div className="flex items-center gap-6 md:px-4">
-          {builderMode === "manual" && (
             <FormField
               control={form.control}
-              name="name"
+              name="description"
               render={({ field }) => (
-                <FormItem className="flex-grow">
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <FloatingLabelInput text="Workout Name" {...field} />
+                    <Textarea
+                      placeholder="Short description (optional)"
+                      className="min-h-16 resize-y"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          )}
 
-          <FormField
-            control={form.control}
-            name="isPublic"
-            render={({ field }) => (
-              <FormItem className="flex items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>
-                    Make workout public
-                  </FormLabel>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="isPublic"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-label="Make workout public"
+                    />
+                  </FormControl>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <FormLabel>Share in the public workout library</FormLabel>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
-        {builderMode === "manual" ? (
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem className="md:px-4">
-                <FormControl>
-                  <Textarea placeholder="Description" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/[0.03] p-4 md:mx-4">
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-sm font-medium">AI owns the workout metadata</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">The connected assistant will propose the workout name and description after it has clarified your goal, constraints, and preferences.</p>
+        <Card className="shadow-sm">
+          <CardHeader className="p-4 pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <CardTitle className="text-base">Exercises</CardTitle>
+                <CardDescription>{fields.length} group{fields.length === 1 ? "" : "s"}</CardDescription>
+              </div>
+              <SelectExercise
+                onSelectExercise={onAddSetCollection}
+                button={({ onClick }) => (
+                  <Button type="button" size="sm" onClick={onClick}>
+                    <Plus data-icon="inline-start" />
+                    Add exercise
+                  </Button>
+                )}
+              />
             </div>
-          </div>
-        )}
-
-        <div 
-          className="w-full md:px-4" 
-          style={{ minHeight: 'inherit' }}
-        >
-          <SelectExercise onSelectExercise={onAddSetCollection} />
-        </div>
-
-        <div className="space-y-2 min-h-0 flex-grow">
-          <DndContext
-            sensors={sensors}
-            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-            onDragEnd={onSwapSetCollection}
-          >
-            <SortableContext items={fields.map(f => f.id)}>
-              <ScrollContainerFadingEdges className="pl-8 min-h-0 h-full py-1">
-                {fields.map((field, setIndex) => (
-                  <CreateSetForm 
-                    key={field.id} 
-                    id={field.id}
-                    setIndex={setIndex} 
-                    remove={() => remove(setIndex)}
-                    onSeperateCollections={onSeperateCollections}
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            {fields.length === 0 ? (
+              <Empty className="border p-4 md:p-6">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Dumbbell />
+                  </EmptyMedia>
+                  <EmptyTitle>Start with your first exercise</EmptyTitle>
+                  <EmptyDescription>
+                    Search your exercise library, then configure sets, reps, weight, rest, and duration.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <SelectExercise
+                    onSelectExercise={onAddSetCollection}
+                    button={({ onClick }) => (
+                      <Button type="button" variant="outline" onClick={onClick}>
+                        <Plus data-icon="inline-start" />
+                        Choose an exercise
+                      </Button>
+                    )}
                   />
-                ))}
-              </ScrollContainerFadingEdges>
-            </SortableContext>
-          </DndContext>
-        </div>
+                </EmptyContent>
+              </Empty>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+                onDragEnd={onSwapSetCollection}
+              >
+                <SortableContext items={fields.map((field) => field.id)}>
+                  <div className="flex flex-col gap-2">
+                    {fields.map((field, setIndex) => (
+                      <CreateSetForm
+                        key={field.id}
+                        id={field.id}
+                        setIndex={setIndex}
+                        remove={() => remove(setIndex)}
+                        onSeperateCollections={onSeperateCollections}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </CardContent>
+        </Card>
 
+        <div className="sticky bottom-2 flex items-center justify-between gap-3 rounded-lg border bg-background/95 p-2 shadow-sm">
+          <p className="hidden text-xs text-muted-foreground sm:block">Ready when the plan looks right.</p>
+          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+            {isPending && <Loader2Icon className="animate-spin" data-icon="inline-start" />}
+            Create workout
+          </Button>
+        </div>
       </form>
     </Form>
   );

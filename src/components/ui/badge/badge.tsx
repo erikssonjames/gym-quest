@@ -5,6 +5,8 @@ import { type ComponentProps } from "react";
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from "../tooltip";
 import { Dumbbell, Flame, Repeat2, Star, CheckCircle, TriangleAlert } from "lucide-react";
 import { Progress } from "../progress";
+import { Badge as StatusBadge } from "../badge";
+import { getBadgeExperience } from "@/lib/experience";
 
 export type BadgeDetails = {
   id: string
@@ -14,6 +16,7 @@ export type BadgeDetails = {
   valueName: string
   valueDescription: string
   group: string
+  groupWeighting: number
   percentageOfUsersHasBadge: number
   currentValue?: number
 }
@@ -48,9 +51,7 @@ export function BadgeComponent (
             <div>
               <div className="flex gap-6 items-center justify-between w-full">
                 <p className="font-semibold">{foundBadge.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-bold">{foundBadge.percentageOfUsersHasBadge}%</span> of users has this badge.
-                </p>
+                <StatusBadge variant="secondary">+{getBadgeExperience(foundBadge.groupWeighting)} XP</StatusBadge>
               </div>
 
               {unlocked ? (

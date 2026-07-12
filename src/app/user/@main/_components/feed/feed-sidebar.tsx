@@ -1,9 +1,10 @@
 "use client"
 
-import { ArrowUpRight, Dumbbell, Trophy, Users } from "lucide-react"
+import { Dumbbell, ScrollText, Trophy, Users } from "lucide-react"
 import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -12,73 +13,56 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { api } from "@/trpc/react"
 
 const shortcuts = [
-  {
-    icon: Dumbbell,
-    label: "Start a workout",
-    description: "Log the session that moves you forward.",
-    href: "/user/workouts/active/create",
-  },
-  {
-    icon: Users,
-    label: "Find your circle",
-    description: "See who is training alongside you.",
-    href: "/user/friends",
-  },
-  {
-    icon: Trophy,
-    label: "Check milestones",
-    description: "See the progress you have earned.",
-    href: "/user/achievements",
-  },
+  { icon: Dumbbell, label: "Start a workout", href: "/user/workouts/active/create" },
+  { icon: Users, label: "Find your circle", href: "/user/friends" },
+  { icon: Trophy, label: "View achievements", href: "/user/achievements" },
 ]
 
 export default function FeedSidebar() {
+  const { data: questBoard } = api.quests.getQuestBoard.useQuery()
+  const rewardsReady = questBoard?.collectableCount ?? 0
+
   return (
     <div className="flex flex-col gap-4">
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader className="gap-2 p-5">
-          <Badge variant="secondary" className="w-fit">
-            Your next move
+      <Card>
+        <CardHeader className="gap-3 p-5">
+          <Badge variant={rewardsReady > 0 ? "default" : "secondary"} className="w-fit">
+            {rewardsReady > 0 ? `${rewardsReady} rewards ready` : "Quest board"}
           </Badge>
-          <CardTitle className="text-xl">Keep the momentum visible.</CardTitle>
-          <CardDescription className="leading-6">
-            Your feed is where progress becomes something you can return to.
-          </CardDescription>
+          <div className="flex flex-col gap-2">
+            <CardTitle className="text-lg">Choose your next objective</CardTitle>
+            <CardDescription className="leading-6">
+              Workouts advance your daily, weekly, and journey quests automatically.
+            </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2 p-5 pt-0">
-          {shortcuts.map(({ icon: Icon, label, description, href }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex items-center gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-border hover:bg-muted/50"
-            >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="size-4" aria-hidden="true" />
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-sm font-medium">{label}</span>
-                <span className="text-xs leading-5 text-muted-foreground">{description}</span>
-              </span>
-              <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden="true" />
+        <CardFooter className="px-5 pb-5 pt-0">
+          <Button asChild variant={rewardsReady > 0 ? "default" : "outline"} className="w-full">
+            <Link href="/user/quests">
+              <ScrollText data-icon="inline-start" />
+              {rewardsReady > 0 ? "Collect rewards" : "Open quest board"}
             </Link>
-          ))}
-        </CardContent>
-        <CardFooter className="border-t border-border/60 p-5">
-          <p className="text-xs leading-5 text-muted-foreground">
-            There is no perfect week. There is only the next useful session.
-          </p>
+          </Button>
         </CardFooter>
       </Card>
 
-      <Card className="border-primary/20 bg-primary/5 shadow-sm">
-        <CardHeader className="gap-2 p-5">
-          <CardTitle className="text-base">A note from GymQuest</CardTitle>
-          <CardDescription className="leading-6">
-            Share wins, questions, and the small decisions that make training stick.
-          </CardDescription>
+      <Card>
+        <CardHeader className="p-5 pb-3">
+          <CardTitle className="text-base">Quick actions</CardTitle>
         </CardHeader>
+        <CardContent className="flex flex-col gap-1 px-3 pb-3 pt-0">
+          {shortcuts.map(({ icon: Icon, label, href }) => (
+            <Button key={href} asChild variant="ghost" className="justify-start">
+              <Link href={href}>
+                <Icon data-icon="inline-start" />
+                {label}
+              </Link>
+            </Button>
+          ))}
+        </CardContent>
       </Card>
     </div>
   )

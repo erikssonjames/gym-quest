@@ -1,64 +1,110 @@
-"use client";
+"use client"
 
+import { memo, useEffect, useId, useRef, useState } from "react"
+import { Controller, useFormContext } from "react-hook-form"
+import { ChevronDown, Layers3, SlidersHorizontal, X } from "lucide-react"
 
-import { Controller, useFormContext } from "react-hook-form";
-import type { CreateWorkoutInput } from "@/server/db/schema/workout";
-import SelectExercise from "./select-exercise";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, SquareStack, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { memo, useCallback, useEffect, useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { useExerciseName } from "@/hooks/use-exercise-name";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useExerciseName } from "@/hooks/use-exercise-name"
+import type { CreateWorkoutInput } from "@/server/db/schema/workout"
+import SelectExercise from "./select-exercise"
 
 interface CreateSetFormProps {
-    setIndex: number
-    setCollectionsIndex: number
-    remove: () => void
-    numCollections: number,
-    numberOfSets: number
-    setNumberOfSets: (n: number) => void
+  setIndex: number
+  setCollectionsIndex: number
+  remove: () => void
+  numCollections: number
+  numberOfSets: number
+  setNumberOfSets: (value: number) => void
 }
 
-function CreateSetCollectionsForm({ setCollectionsIndex, setIndex, remove, numCollections, numberOfSets, setNumberOfSets }: CreateSetFormProps) {
+function CreateSetCollectionsForm({
+  setCollectionsIndex,
+  setIndex,
+  remove,
+  numCollections,
+  numberOfSets,
+  setNumberOfSets,
+}: CreateSetFormProps) {
   const { control, getValues } = useFormContext<CreateWorkoutInput>()
+  const { getExerciseName } = useExerciseName()
+  const setCountId = useId()
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    const { duration, reps, weight, restTime } = getValues(`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}`)
-    const max = Math.max(
-      duration.length,
-      reps.length,
-      weight.length,
-      restTime.length
+    const { duration, reps, weight, restTime } = getValues(
+      `workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}`,
     )
-    setNumberOfSets(max)
+    setNumberOfSets(Math.max(1, duration.length, reps.length, weight.length, restTime.length))
   }, [getValues, setIndex, setCollectionsIndex, setNumberOfSets])
 
-  const { getExerciseName } = useExerciseName()
+  const collection = getValues(
+    `workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}`,
+  )
+  const reps = collection.reps[0] ?? 0
+  const duration = collection.duration[0] ?? 0
+  const rest = collection.restTime[0] ?? 0
+  const hasVariedReps = new Set(collection.reps).size > 1
+  const hasVariedDuration = new Set(collection.duration).size > 1
+  const workSummary = reps > 0
+    ? hasVariedReps ? "Varied reps" : `${reps} reps`
+    : hasVariedDuration ? "Varied duration" : `${duration}s work`
 
   return (
-    <div 
-      className={cn(
-        "relative p-4 bg-card/20 rounded-md border",
-        setCollectionsIndex === 0 && "rounded-tl-none"
-      )}
-    >
-      <div className="w-full flex gap-2 items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
+    <Sheet open={open} onOpenChange={setOpen}>
+      <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto min-w-0 flex-1 justify-start p-2 text-left"
+          onClick={() => setOpen(true)}
+        >
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="truncate font-medium">{getExerciseName(collection.exerciseId)}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              {numberOfSets} set{numberOfSets === 1 ? "" : "s"} · {workSummary} · {rest}s rest
+            </span>
+          </div>
+          <SlidersHorizontal data-icon="inline-end" />
+        </Button>
+        {numCollections > 1 && (
+          <Button type="button" onClick={remove} size="icon" variant="ghost" aria-label="Remove exercise from superset">
+            <X />
+          </Button>
+        )}
+      </div>
+
+      <SheetContent side="right" className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-xl">
+        <SheetHeader className="flex flex-col gap-2 border-b p-5 pr-12 text-left">
+          <SheetTitle>{getExerciseName(collection.exerciseId)}</SheetTitle>
+          <SheetDescription>Configure the exercise without expanding the workout list.</SheetDescription>
+        </SheetHeader>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-5">
           <Controller
             control={control}
             name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.exerciseId`}
-            render={({field}) => (
-              <div className="md:space-y-2 w-full md:w-fit md:min-w-60">
-                <p className="text-xs text-muted-foreground">Exercise</p>
-
+            render={({ field }) => (
+              <div className="flex flex-col gap-2">
+                <Label>Exercise</Label>
                 <SelectExercise
-                  onSelectExercise={(id) => field.onChange(id)} // Sync with react-hook-form
+                  onSelectExercise={field.onChange}
                   button={({ onClick }) => (
-                    <Button onClick={onClick} type="button" variant="ghost" className="text-xl ps-0">
-                      {getExerciseName(field.value)}
-                      <ChevronDown />
+                    <Button type="button" variant="outline" onClick={onClick} className="justify-between">
+                      <span className="truncate">{getExerciseName(field.value)}</span>
+                      <ChevronDown data-icon="inline-end" />
                     </Button>
                   )}
                 />
@@ -66,176 +112,184 @@ function CreateSetCollectionsForm({ setCollectionsIndex, setIndex, remove, numCo
             )}
           />
 
-          <div className="flex gap-2 flex-wrap">
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Sets</p>
-              <Input 
-                value={numberOfSets} 
-                onChange={(e) => setNumberOfSets(isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
-                className="w-12"  
-              />
-            </div>
-
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.reps`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Reps"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.weight`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Weight (kg)"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.restTime`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Rest Time (s)"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.duration`}
-              render={({field}) => (
-                <IntegerSelectArray
-                  label="Set Duration (s)"
-                  onSetValues={field.onChange}
-                  numberOfSets={numberOfSets}
-                  initialValues={field.value}
-                />
-              )}
+          <div className="flex max-w-32 flex-col gap-2">
+            <Label htmlFor={setCountId}>Sets</Label>
+            <Input
+              id={setCountId}
+              type="number"
+              min={1}
+              max={50}
+              value={numberOfSets}
+              onChange={(event) => {
+                const value = Number(event.target.value)
+                setNumberOfSets(Number.isFinite(value) ? Math.max(1, Math.min(50, value)) : 1)
+              }}
             />
           </div>
+
+          <section className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4">
+            <div className="flex flex-col gap-1">
+              <h4 className="text-sm font-medium">Work target</h4>
+              <p className="text-xs leading-5 text-muted-foreground">Leave weight at zero for bodyweight work.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.reps`}
+                render={({ field }) => (
+                  <IntegerSelectArray label="Reps" onSetValues={field.onChange} numberOfSets={numberOfSets} initialValues={field.value} />
+                )}
+              />
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.weight`}
+                render={({ field }) => (
+                  <IntegerSelectArray label="Weight (kg)" onSetValues={field.onChange} numberOfSets={numberOfSets} initialValues={field.value} />
+                )}
+              />
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4">
+            <div className="flex flex-col gap-1">
+              <h4 className="text-sm font-medium">Timing</h4>
+              <p className="text-xs leading-5 text-muted-foreground">Use duration for holds or timed movements.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.restTime`}
+                render={({ field }) => (
+                  <IntegerSelectArray label="Rest (seconds)" onSetValues={field.onChange} numberOfSets={numberOfSets} initialValues={field.value} />
+                )}
+              />
+              <Controller
+                control={control}
+                name={`workoutSets.${setIndex}.workoutSetCollections.${setCollectionsIndex}.duration`}
+                render={({ field }) => (
+                  <IntegerSelectArray label="Duration (seconds)" onSetValues={field.onChange} numberOfSets={numberOfSets} initialValues={field.value} />
+                )}
+              />
+            </div>
+          </section>
         </div>
 
-        {numCollections > 1 && (
-          <Button type="button" onClick={remove} size="icon" variant="ghost" className="size-7">
-            <X />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
+        <SheetFooter className="border-t p-3">
+          <SheetClose asChild>
+            <Button type="button">Done</Button>
+          </SheetClose>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  )
 }
 
-function IntegerSelectArray(
-  { label, onSetValues, numberOfSets, initialValues }: 
-  { label: string, onSetValues: (values: Array<number>) => void, numberOfSets: number, initialValues: Array<number> }
-) {
+function IntegerSelectArray({
+  label,
+  onSetValues,
+  numberOfSets,
+  initialValues,
+}: {
+  label: string
+  onSetValues: (values: number[]) => void
+  numberOfSets: number
+  initialValues: number[]
+}) {
   const [splitValues, setSplitValues] = useState(false)
-  const [internalValues, setInternvalValues] = useState(initialValues)
-
-  const onSetValuesCallback = useCallback((arr: number[]) => {
-    onSetValues(arr);
-  }, [onSetValues]);
-
-  const onInputChange = useCallback((val: string, index: number) => {
-    let copyValues = []
-    if (numberOfSets > internalValues.length) {
-      copyValues = [
-        ...internalValues,
-        ...Array.from({ length: Math.max(1, numberOfSets - internalValues.length) }).map(() => Number(internalValues[internalValues.length - 1]) ?? 0)
-      ]
-    } else {
-      copyValues = internalValues.slice(0, Math.max(1, numberOfSets))
-    }
-
-    // const copyValues = [...internalValues]
-    
-    if (splitValues) {
-      copyValues[index] = isNaN(Number(val)) ? 0 : Number(val)
-    } else {
-      copyValues = copyValues.map(() => isNaN(Number(val)) ? 0 : Number(val))
-    }
-
-    setInternvalValues(copyValues)
-    onSetValuesCallback(copyValues)
-  }, [onSetValuesCallback, internalValues, numberOfSets, splitValues])
+  const [internalValues, setInternalValues] = useState(initialValues)
+  const onSetValuesRef = useRef(onSetValues)
+  const inputId = useId()
 
   useEffect(() => {
-    setInternvalValues((prev) => {
-      if (numberOfSets === 0) return [prev.at(0) ?? 0]
+    onSetValuesRef.current = onSetValues
+  }, [onSetValues])
 
-      if (numberOfSets > prev.length) {
-        return [
-          ...prev,
-          ...Array.from({ length: Math.max(1, numberOfSets - prev.length) }).map(() => Number(prev[prev.length - 1]) ?? 0)
-        ]
-      } else {
-        return prev.slice(0, numberOfSets)
-      }
-    });
-  }, [numberOfSets, splitValues]);
+  useEffect(() => {
+    setInternalValues((previousValues) => {
+      const fallbackValue = previousValues.at(-1) ?? 0
+      const nextValues =
+        numberOfSets > previousValues.length
+          ? [
+              ...previousValues,
+              ...Array.from({ length: numberOfSets - previousValues.length }, () => fallbackValue),
+            ]
+          : previousValues.slice(0, numberOfSets)
+
+      onSetValuesRef.current(nextValues)
+      return nextValues
+    })
+  }, [numberOfSets])
 
   useEffect(() => {
     if (numberOfSets <= 1 || numberOfSets > 10) setSplitValues(false)
   }, [numberOfSets])
 
+  const onInputChange = (value: string, index: number) => {
+    const parsedValue = Number(value)
+    const nextValue = Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0
+    const nextValues = [...internalValues]
+
+    if (splitValues) {
+      nextValues[index] = nextValue
+    } else {
+      nextValues.fill(nextValue)
+    }
+
+    setInternalValues(nextValues)
+    onSetValuesRef.current(nextValues)
+  }
+
   return (
-    <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <div className={cn(
-        "relative",
-        splitValues && numberOfSets > 0 && "border border-dashed border-accent-foreground/40 rounded-sm p-1"
-      )}>
-        {splitValues && numberOfSets > 0 ? (
-          <div className="flex gap-2 pe-10">
+    <div className="flex min-w-0 flex-col gap-2">
+      <Label htmlFor={inputId}>{label}</Label>
+      <div className="flex flex-wrap items-start gap-2">
+        {splitValues ? (
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
             {Array.from({ length: numberOfSets }).map((_, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input 
-                  value={internalValues.at(index) ?? 0} 
-                  onChange={(e) => onInputChange(e.target.value, index)} 
-                  className="w-12 h-8" />
-                {index < numberOfSets - 1 && <ChevronRight size={12} />}
-              </div>
+              <Input
+                key={index}
+                id={index === 0 ? inputId : undefined}
+                type="number"
+                min={0}
+                value={internalValues.at(index) ?? 0}
+                onChange={(event) => onInputChange(event.target.value, index)}
+                aria-label={`${label}, set ${index + 1}`}
+                className="w-20"
+              />
             ))}
           </div>
         ) : (
-          <Input value={internalValues[0]} onChange={(e) => onInputChange(e.target.value, 0)} className="w-20 pe-10" type="" />
+          <Input
+            id={inputId}
+            type="number"
+            min={0}
+            value={internalValues[0] ?? 0}
+            onChange={(event) => onInputChange(event.target.value, 0)}
+            className="min-w-20 flex-1"
+          />
         )}
+
         {numberOfSets > 1 && (
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  type="button" 
-                  variant={splitValues ? "ghost" : "secondary"}
-                  size="icon" 
-                  className={cn(
-                    "absolute top-0 bottom-0 size-6 m-2",
-                    splitValues && numberOfSets > 0 ? "-right-0" : "size-6 m-2 right-0"
-                  )}
+                <Button
+                  type="button"
+                  variant={splitValues ? "secondary" : "outline"}
+                  size="icon"
                   disabled={numberOfSets > 10}
-                  onClick={() => setSplitValues(!splitValues)}
+                  onClick={() => setSplitValues((currentValue) => !currentValue)}
+                  aria-label={splitValues ? `Use one ${label} value for every set` : `Set ${label} for each set`}
                 >
-                  {splitValues && numberOfSets > 0 ? <X /> : <SquareStack />}
+                  <Layers3 />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {splitValues && numberOfSets <= 10 ? `Assign same ${label} for each rep` : `Assign specific ${label} for each set`}
-                {numberOfSets > 10 && "You can assign specific values for sets this large"}
+                {numberOfSets > 10
+                  ? "Per-set values are available for up to 10 sets."
+                  : splitValues
+                    ? `Use the same ${label.toLowerCase()} for every set.`
+                    : `Set a different ${label.toLowerCase()} for each set.`}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

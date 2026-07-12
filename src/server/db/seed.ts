@@ -27,11 +27,12 @@ import {
   type InsertWorkoutSet,
   type InsertWorkoutSetCollection,
 } from "./schema/workout";
+import { badge } from "./schema/badges";
+import { BADGE_DEFINITIONS } from "@/variables/badges";
+import { SYSTEM_USER_ID } from "@/variables/auth";
 
 nextEnv.loadEnvConfig(process.cwd());
 const { env } = await import("@/env");
-
-const SYSTEM_USER_ID = "00000000-0000-4000-8000-000000000001";
 
 const muscleGroups = [
   {
@@ -378,6 +379,11 @@ async function seed() {
         .insert(userProfile)
         .values({ userId: SYSTEM_USER_ID, selectedBadge: null })
         .onConflictDoNothing({ target: userProfile.userId });
+
+      await tx
+        .insert(badge)
+        .values(BADGE_DEFINITIONS)
+        .onConflictDoNothing();
 
       await tx
         .insert(muscleGroup)

@@ -9,6 +9,9 @@ import { feedbackRouter } from "./routers/feedback"
 import { badgesRouter } from "./routers/badges"
 import { feedRouter } from "./routers/feed"
 import { billingRouter } from "./routers/billing"
+import { weightRouter } from "./routers/weight"
+import { progressionRouter } from "./routers/progression"
+import { questsRouter } from "./routers/quests"
 
 /**
  * This is the primary router for your server.
@@ -24,7 +27,10 @@ export const appRouter = createTRPCRouter({
   feedback: feedbackRouter,
   badges: badgesRouter,
   feed: feedRouter,
-  billing: billingRouter
+  billing: billingRouter,
+  weight: weightRouter,
+  progression: progressionRouter,
+  quests: questsRouter,
 });
 
 // export type definition of API

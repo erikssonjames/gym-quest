@@ -6,11 +6,15 @@ import {
   BookOpen,
   CreditCard,
   Dumbbell,
+  Home,
   type LucideIcon,
   PersonStanding,
+  Scale,
+  ScrollText,
   Settings2,
   Tag,
   Trophy,
+  Users,
 } from "lucide-react"
 
 import {
@@ -23,7 +27,6 @@ import {
 import { NavMain } from "./nav-main"
 import { NavUser } from "./nav-user"
 import { Header } from "./header"
-import { NavGeneral } from "./nav-general"
 import { usePathname } from "next/navigation"
 import { NavAdmin } from "./nav-admin"
 import ActiveUsers from "./active-users"
@@ -37,58 +40,89 @@ export type SidebarItem = {
 };
 
 export type SidebarData = {
-  navMain: SidebarItem[];
-  navGeneral: SidebarItem[];
+  navGroups: {
+    label: string;
+    items: SidebarItem[];
+  }[];
   navAdmin: SidebarItem[];
 };
 
 export const sidebarData: SidebarData = {
-  navMain: [
+  navGroups: [
     {
-      title: "Workouts",
-      url: "/user/workouts",
-      icon: Dumbbell,
+      label: "Home",
       items: [
-        { title: "Overview", url: "/user/workouts" },
-        { title: "History", url: "/user/workouts/history" },
-        { title: "Manage", url: "/user/workouts/manage" },
-        { title: "Active Workout", url: "/user/workouts/active" },
+        { title: "Feed", url: "/user", icon: Home },
+        { title: "Quests", url: "/user/quests", icon: ScrollText },
       ],
     },
     {
-      title: "Exercises",
-      url: "/user/exercises",
-      icon: PersonStanding,
-    },
-    {
-      title: "Achievements",
-      url: "/user/achievements",
-      icon: Trophy,
+      label: "Training",
       items: [
-        { title: "Levels", url: "/user/achievements/levels" },
-        { title: "Trophies", url: "/user/achievements/trophies" },
+        {
+          title: "Workouts",
+          url: "/user/workouts",
+          icon: Dumbbell,
+          items: [
+            { title: "Overview", url: "/user/workouts" },
+            { title: "History", url: "/user/workouts/history" },
+            { title: "Manage", url: "/user/workouts/manage" },
+            { title: "Active Workout", url: "/user/workouts/active" },
+          ],
+        },
+        { title: "Exercises", url: "/user/exercises", icon: PersonStanding },
+        { title: "Weight", url: "/user/progress/weight", icon: Scale },
       ],
     },
     {
-      title: "Documentation",
-      url: "/user/documentation",
-      icon: BookOpen,
+      label: "Progress",
       items: [
-        { title: "Introduction", url: "/user/documentation" },
-        { title: "Get Started", url: "/user/documentation/get-started" },
-        { title: "Tutorials", url: "/user/documentation/tutorials" },
-        { title: "Changelog", url: "/user/documentation/change-log" },
+        {
+          title: "Achievements",
+          url: "/user/achievements",
+          icon: Trophy,
+          items: [
+            { title: "Overview", url: "/user/achievements" },
+            { title: "Levels", url: "/user/achievements/levels" },
+            { title: "Trophies", url: "/user/achievements/trophies" },
+          ],
+        },
       ],
     },
-  ],
-  navGeneral: [
     {
-      title: "Settings",
-      url: "/user/settings",
-      icon: Settings2,
+      label: "Community",
       items: [
-        { title: "General", url: "/user/settings" },
-        { title: "Appearance", url: "/user/settings/appearance" },
+        { title: "Friends", url: "/user/friends", icon: Users },
+      ],
+    },
+    {
+      label: "Resources",
+      items: [
+        {
+          title: "Documentation",
+          url: "/user/documentation",
+          icon: BookOpen,
+          items: [
+            { title: "Introduction", url: "/user/documentation" },
+            { title: "Get Started", url: "/user/documentation/get-started" },
+            { title: "Tutorials", url: "/user/documentation/tutorials" },
+            { title: "Changelog", url: "/user/documentation/change-log" },
+          ],
+        },
+      ],
+    },
+    {
+      label: "Account",
+      items: [
+        {
+          title: "Settings",
+          url: "/user/settings",
+          icon: Settings2,
+          items: [
+            { title: "General", url: "/user/settings" },
+            { title: "Appearance", url: "/user/settings/appearance" },
+          ],
+        },
       ],
     },
   ],
@@ -113,9 +147,12 @@ export const sidebarData: SidebarData = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const currentUrl = usePathname()
+  const currentPath = currentUrl.split("?")[0] ?? currentUrl
 
-  const isUrlActive = (url: string) => currentUrl.split("?")[0]?.endsWith(url) ?? false
-  const isUrlPartiallyActive = (url: string) => currentUrl.split("?")[0]?.startsWith(url) ?? false
+  const isUrlActive = (url: string) => currentPath === url
+  const isUrlPartiallyActive = (url: string) => (
+    url !== "/user" && (currentPath === url || currentPath.startsWith(`${url}/`))
+  )
 
   return (
     <Sidebar collapsible="icon" {...props} className="bg-background">
@@ -123,8 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <Header />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sidebarData.navMain} isActive={isUrlActive} isPartiallyActive={isUrlPartiallyActive} />
-        <NavGeneral generalItem={sidebarData.navGeneral} isActive={isUrlActive} />
+        <NavMain groups={sidebarData.navGroups} isActive={isUrlActive} isPartiallyActive={isUrlPartiallyActive} />
         <NavAdmin adminItem={sidebarData.navAdmin} isActive={isUrlPartiallyActive} />
       </SidebarContent>
       <SidebarFooter>

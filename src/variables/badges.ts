@@ -57,6 +57,83 @@ export const BADGE_GROUPS = [
   },
 ] as const
 
+type BadgeDefinition = {
+  id: string
+  name: string
+  description: string
+  valueToComplete: number
+  valueName: string
+  valueDescription: string
+  group: BadgeGroupName
+  groupWeighting: number
+  percentageOfUsersHasBadge: number
+}
+
+const weightBadges = BADGE_GROUPS[0].badges.map(({ id, weighting }) => {
+  const kilograms = Number(id.replace("kg", ""))
+  return {
+    id,
+    name: `${kilograms.toLocaleString("en-US")} kg club`,
+    description: `Lift ${kilograms.toLocaleString("en-US")} kg of total training volume across completed workouts.`,
+    valueToComplete: kilograms,
+    valueName: "kg lifted",
+    valueDescription: "Total weight moved across completed sets",
+    group: "weight_lifting",
+    groupWeighting: weighting,
+    percentageOfUsersHasBadge: 0,
+  } satisfies BadgeDefinition
+})
+
+const consistencyBadges = BADGE_GROUPS[1].badges.map(({ id, weighting }) => {
+  const days = Number(id.split("_")[0])
+  return {
+    id,
+    name: `${days} day streak`,
+    description: `Complete a workout on ${days} consecutive days.`,
+    valueToComplete: days,
+    valueName: "day streak",
+    valueDescription: "Consecutive days with a completed workout",
+    group: "consistent_lifter",
+    groupWeighting: weighting,
+    percentageOfUsersHasBadge: 0,
+  } satisfies BadgeDefinition
+})
+
+const workoutBadges = BADGE_GROUPS[2].badges.map(({ id, weighting }) => {
+  const workouts = Number(id.split("_")[0])
+  return {
+    id,
+    name: `${workouts.toLocaleString("en-US")} workouts`,
+    description: `Complete ${workouts.toLocaleString("en-US")} workouts and keep building your training record.`,
+    valueToComplete: workouts,
+    valueName: "workout",
+    valueDescription: "Completed workout sessions",
+    group: "frequent_lifter",
+    groupWeighting: weighting,
+    percentageOfUsersHasBadge: 0,
+  } satisfies BadgeDefinition
+})
+
+const earlyUserNames = ["Founding ten", "First fifty", "First hundred", "First five hundred", "First thousand"] as const
+const earlyUserBadges = BADGE_GROUPS[3].badges.map(({ id, weighting }) => ({
+  id,
+  name: earlyUserNames[weighting] ?? "Early adventurer",
+  description: "Join GymQuest early and help shape the training community.",
+  valueToComplete: 1,
+  valueName: "account",
+  valueDescription: "Awarded automatically based on signup order",
+  group: "early_user",
+  groupWeighting: weighting,
+  percentageOfUsersHasBadge: 0,
+}) satisfies BadgeDefinition)
+
+export const BADGE_DEFINITIONS: BadgeDefinition[] = [
+  ...weightBadges,
+  ...consistencyBadges,
+  ...workoutBadges,
+  ...earlyUserBadges,
+]
+
 type BadgeUnionFromGroups<T> =
   // 1. If T is an array of something ...
   T extends ReadonlyArray<infer Group>
@@ -89,3 +166,13 @@ export const BADGE_GROUP_RECORD = BADGE_GROUPS.reduce<Record<BadgeGroupName, Bad
   acc[curr.id] = [...curr.badges]
   return acc
 }, {} as Record<BadgeGroupName, BadgeLiteral[]>)
+
+export function getEarlyUserBadgeId(userNumber: number) {
+  if (userNumber <= 0) return null
+  if (userNumber <= 10) return "0-10th_user"
+  if (userNumber <= 50) return "11-50th_user"
+  if (userNumber <= 100) return "51-100th_user"
+  if (userNumber <= 500) return "101-500th_user"
+  if (userNumber <= 1000) return "501-1000th_user"
+  return null
+}

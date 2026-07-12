@@ -1,46 +1,58 @@
-"use client";
+"use client"
 
-import { useFieldArray, useFormContext } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { type CreateWorkoutInput } from "@/server/db/schema/workout";
-import { ChevronDown, Grip, Link2, RotateCcw, Trash, X } from "lucide-react";
-import CreateSetCollectionsForm from "./set-collections-form";
-import { Separator } from "@/components/ui/separator";
-import SelectExercise from "./select-exercise";
-import { memo, useCallback, useState } from "react";
-import { useSortable } from "@dnd-kit/sortable";
+import { memo, useCallback, useState } from "react"
+import { useFieldArray, useFormContext } from "react-hook-form"
+import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { cn } from "@/lib/utils";
+import { GripVertical, Plus, RotateCcw, Split, Trash2 } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { cn } from "@/lib/utils"
+import type { CreateWorkoutInput } from "@/server/db/schema/workout"
+import CreateSetCollectionsForm from "./set-collections-form"
+import SelectExercise from "./select-exercise"
 
 interface CreateSetFormProps {
-    setIndex: number
-    remove: () => void
-    onSeperateCollections: (setIndex: number, setCollectionIndex: number) => void
-    id: string
+  setIndex: number
+  remove: () => void
+  onSeperateCollections: (setIndex: number, setCollectionIndex: number) => void
+  id: string
 }
 
-function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSetFormProps) {
+function CreateSetForm({
+  setIndex,
+  remove,
+  onSeperateCollections,
+  id,
+}: CreateSetFormProps) {
   const {
     listeners,
     setNodeRef,
     transform,
     transition,
     setDraggableNodeRef,
-    isDragging
-  } = useSortable({ 
+    isDragging,
+  } = useSortable({
     id,
-    animateLayoutChanges: () => false
+    animateLayoutChanges: () => false,
   })
 
-  const [moreActionsOpen, setMoreActionsOpen] = useState(false)
   const { control } = useFormContext<CreateWorkoutInput>()
   const { fields, append, remove: removeCollection, update } = useFieldArray({
     control,
-    name: `workoutSets.${setIndex}.workoutSetCollections`
+    name: `workoutSets.${setIndex}.workoutSetCollections`,
   })
-
   const [numberOfSets, setNumberOfSets] = useState(0)
-  const setNumberOfSetsMemoized = useCallback((n: number) => setNumberOfSets(n), [])
+  const setNumberOfSetsMemoized = useCallback((value: number) => setNumberOfSets(value), [])
 
   const onAddSetCollection = (exerciseId: string) => {
     append({
@@ -48,14 +60,9 @@ function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSe
       exerciseId,
       reps: [0],
       restTime: [0],
-      weight: [0]
+      weight: [0],
     })
   }
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
 
   const onReset = () => {
     fields.forEach((field, index) => {
@@ -64,104 +71,98 @@ function CreateSetForm({ setIndex, remove, onSeperateCollections, id }: CreateSe
         exerciseId: field.exerciseId,
         reps: [0],
         restTime: [0],
-        weight: [0]
+        weight: [0],
       })
     })
+    setNumberOfSets(1)
   }
 
   return (
     <div
-      style={style}
       ref={setNodeRef}
-      className="flex"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
     >
-      <div className="relative flex-grow rounded-md pe-1 md:pe-0">
-        <button 
-          className="absolute right-full top-0 bg-secondary/30 border p-2 rounded-l-sm flex items-center gap-2 cursor-grab hover:bg-secondary/60 active:bg-primary/40"
-          type="button"
-          ref={setDraggableNodeRef}
-          {...listeners}
-        >
-          <Grip size={14} />
-        </button>
+      <Card className={cn("shadow-none", isDragging && "ring-2 ring-ring")}>
+        <CardHeader className="p-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1">
+              <Button
+                ref={setDraggableNodeRef}
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label={`Reorder training group ${setIndex + 1}`}
+                className="cursor-grab active:cursor-grabbing"
+                {...listeners}
+              >
+                <GripVertical />
+              </Button>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <CardTitle className="truncate text-sm">Group {setIndex + 1}</CardTitle>
+                  {fields.length > 1 && <Badge variant="secondary">Superset</Badge>}
+                </div>
+                <CardDescription>
+                  {fields.length} exercise{fields.length === 1 ? "" : "s"}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button type="button" size="icon" variant="ghost" onClick={onReset} aria-label="Reset training group">
+                <RotateCcw />
+              </Button>
+              <Button type="button" size="icon" variant="ghost" onClick={remove} aria-label="Delete training group">
+                <Trash2 />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
 
-        <div className={cn(
-          "space-y-2",
-          isDragging && "outline outline-primary/20 rounded-md"
-        )}>
+        <CardContent className="flex flex-col gap-2 p-2 pt-0">
           {fields.map((field, setCollectionIndex) => (
-            <div key={field.id} className="relative">
+            <div key={field.id} className="flex flex-col gap-2">
               <CreateSetCollectionsForm
                 setNumberOfSets={setNumberOfSetsMemoized}
                 numberOfSets={numberOfSets}
                 remove={() => removeCollection(setCollectionIndex)}
-                setIndex={setIndex} 
+                setIndex={setIndex}
                 setCollectionsIndex={setCollectionIndex}
                 numCollections={fields.length}
               />
 
-              {setCollectionIndex !== fields.length - 1 && fields.length > 0 && (
-                <div className="absolute -bottom-4 left-2 flex justify-center items-center">
-                  <button className="group relative p-0 m-0" type="button" onClick={() => onSeperateCollections(setIndex, setCollectionIndex)}>
-                    <Link2 className="rotate-90 text-primary opacity-100 group-hover:opacity-0 transition-all" />
-                    <X className="group-hover:opacity-100 opacity-0 absolute inset-0 transition-all text-primary" />
-                  </button>
-                </div>
+              {setCollectionIndex < fields.length - 1 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="self-center"
+                  onClick={() => onSeperateCollections(setIndex, setCollectionIndex)}
+                >
+                  <Split data-icon="inline-start" />
+                  Split group here
+                </Button>
               )}
             </div>
           ))}
-        </div>
+        </CardContent>
 
-        {!moreActionsOpen ? (
-          <div className="w-full flex justify-center">
-            <Button 
-              size="sm" 
-              type="button" 
-              variant="ghost" 
-              className="pt-0 pb-2 w-40 text-center group relative hover:bg-transparent"
-              onClick={() => setMoreActionsOpen(true)}
-            >
-              <ChevronDown className="group-hover:hidden" />
-              <p className="opacity-0 absolute inset-0 mx-4 text-center group-hover:opacity-100 transition-all pt-2 bg-secondary/20 rounded-b-md">More Actions</p>
-            </Button>
-          </div>
-        ) : (
-          <div className="w-full bg-background/20 rounded-b-md flex justify-between items-center px-4 pb-2">
-            <SelectExercise 
-              onSelectExercise={(id) => {
-                setMoreActionsOpen(false)
-                onAddSetCollection(id)
-              }}
-              button={({ onClick }) => (
-                <Button 
-                  type="button" 
-                  onClick={onClick} 
-                  size="sm" 
-                  className="h-7">
-                  {fields.length <= 1 ? "Create Superset" : "Add Exercise"}
-                </Button>
-              )}
-            />
-
-            <Button onClick={() => setMoreActionsOpen(false)} variant="ghost" size="icon">
-              <X />
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="bg-background/20 flex-col gap-2 h-fit p-2 ms-2 rounded-md hidden md:flex">
-        <Button size="icon" className="size-7" onClick={() => onReset()} type="button">
-          <RotateCcw />
-        </Button>
-
-        <Separator />
-
-        <Button size="icon" className="size-7" variant="destructive" onClick={remove} type="button">
-          <Trash /> 
-        </Button>
-      </div>
+        <CardFooter className="border-t bg-muted/20 p-2">
+          <SelectExercise
+            onSelectExercise={onAddSetCollection}
+            button={({ onClick }) => (
+              <Button type="button" variant="ghost" size="sm" onClick={onClick}>
+                <Plus data-icon="inline-start" />
+                {fields.length === 1 ? "Create a superset" : "Add to superset"}
+              </Button>
+            )}
+          />
+        </CardFooter>
+      </Card>
     </div>
-  );
+  )
 }
 
 export default memo(CreateSetForm)

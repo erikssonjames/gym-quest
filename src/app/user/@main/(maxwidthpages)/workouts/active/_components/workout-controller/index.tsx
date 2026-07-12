@@ -163,6 +163,11 @@ export default function WorkoutController() {
     runAction(async () => {
       const sessionId = await endWorkout.mutateAsync(session.id);
       await invalidateSession();
+      await Promise.all([
+        utils.quests.getQuestBoard.invalidate(),
+        utils.progression.getProgression.invalidate(),
+        utils.badges.getBadgesWithProgress.invalidate(),
+      ]);
 
       router.push(
         sessionId

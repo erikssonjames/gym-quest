@@ -131,7 +131,9 @@ export const userSettings = pgTable("userSettings", {
   borderRadius: varchar('borderRadius', { length: 20 })
     .$type<BORDER_RADIUS>()
     .$default(() => STANDARD_BORDER_RADIUS)
-    .notNull()
+    .notNull(),
+  weightGoalGrams: integer("weightGoalGrams"),
+  weightReminderEnabled: boolean("weightReminderEnabled").default(false).notNull(),
 })
 
 export const verificationQueue = pgTable("verificationQueue", {

@@ -34,7 +34,9 @@ export const UserSettingsProvider = (
         userSettings: {
           userId: cachedUserData.id,
           borderRadius: updatedSettings.borderRadius ?? cachedUserData.userSettings?.borderRadius ?? STANDARD_BORDER_RADIUS,
-          colorTheme: updatedSettings.colorTheme ?? cachedUserData.userSettings?.colorTheme ?? STANDARD_COLOR_THEME
+          colorTheme: updatedSettings.colorTheme ?? cachedUserData.userSettings?.colorTheme ?? STANDARD_COLOR_THEME,
+          weightGoalGrams: cachedUserData.userSettings?.weightGoalGrams ?? null,
+          weightReminderEnabled: cachedUserData.userSettings?.weightReminderEnabled ?? false,
         }
       }
       queryClient.setQueryData(getMeQueryKey, updatedUserData)

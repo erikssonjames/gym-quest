@@ -3,7 +3,7 @@ import WorkoutHistory from "./_components/workout-history";
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { PageShell } from "@/app/user/@main/_components/page-shell"
-import { ArrowRight, LibraryBig } from "lucide-react"
+import { ArrowRight, FolderOpen, LibraryBig } from "lucide-react"
 
 export default function WorkoutsPage () {
   return (
@@ -11,7 +11,7 @@ export default function WorkoutsPage () {
       eyebrow="Training hub"
       title="Your workouts"
       description="Start a session, return to a plan, or use your history to decide what is useful next."
-      actions={<><Button asChild variant="outline"><Link href="/user/workouts/browse"><LibraryBig />Browse plans</Link></Button><Button asChild><Link href="/user/workouts/manage/create">Create workout<ArrowRight data-icon="inline-end" /></Link></Button></>}
+      actions={<><Button asChild variant="outline"><Link href="/user/workouts/manage"><FolderOpen data-icon="inline-start" />My plans</Link></Button><Button asChild variant="outline"><Link href="/user/workouts/browse"><LibraryBig data-icon="inline-start" />Browse plans</Link></Button><Button asChild><Link href="/user/workouts/manage/create">Create workout<ArrowRight data-icon="inline-end" /></Link></Button></>}
     >
       <ActiveWorkouts />
       <WorkoutHistory />
