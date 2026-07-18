@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Progress } from "@/components/ui/progress"
 import Navbar from "./_components/navbar"
 import WelcomeText from "./_components/welcome-text"
 import GymQuester from "./_components/gym-quester"
@@ -104,16 +105,11 @@ function QuestPreview() {
           </div>
           <Badge variant="secondary">80% momentum</Badge>
         </div>
-        <div className="flex gap-2" aria-label="Four of five sessions completed">
-          {[true, true, true, true, false].map((complete, index) => (
-            <div
-              key={index}
-              className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
-            >
-              <div className={complete ? "h-full rounded-full bg-primary" : "h-full"} />
-            </div>
-          ))}
-        </div>
+        <Progress
+          aria-label="Four of five sessions completed"
+          className="h-2"
+          value={80}
+        />
         <Separator />
         <div className="flex items-center gap-3">
           <div className="flex">
@@ -246,7 +242,7 @@ export default async function Home() {
               <CardTitle className="max-w-2xl text-3xl leading-tight text-primary-foreground sm:text-5xl">
                 Make your next workout count for more than today.
               </CardTitle>
-              <CardDescription className="max-w-xl text-base leading-8 text-primary-foreground/75">
+              <CardDescription className="max-w-xl text-base leading-8 text-primary-foreground">
                 Start with one goal, one session, and a place to see the momentum
                 build.
               </CardDescription>

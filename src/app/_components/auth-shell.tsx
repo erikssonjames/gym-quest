@@ -43,7 +43,7 @@ function Feature({ icon: Icon, title, description }: FeatureProps) {
       </div>
       <div className="flex flex-col gap-1">
         <p className="font-medium">{title}</p>
-        <p className="text-sm leading-6 text-primary-foreground/70">{description}</p>
+        <p className="text-sm leading-6 text-primary-foreground">{description}</p>
       </div>
     </div>
   )
@@ -113,19 +113,19 @@ export function AuthShell({
 
         <ScrollArea className="h-dvh">
           <div className="relative mx-auto flex min-h-dvh max-w-2xl flex-col px-10 py-10 xl:px-16">
-            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground/70">
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground">
               <span>Inside GymQuest</span>
               <ArrowUpRight className="size-4" aria-hidden="true" />
             </div>
 
             <div className="flex flex-1 flex-col justify-center py-16">
-              <p className="text-sm font-medium text-primary-foreground/70">
+              <p className="text-sm font-medium text-primary-foreground">
                 A gym community with momentum
               </p>
               <h2 className="mt-6 max-w-xl text-4xl font-semibold leading-[1.05] tracking-tight xl:text-6xl">
                 Make every set count.
               </h2>
-              <p className="mt-6 max-w-lg text-base leading-8 text-primary-foreground/75 xl:text-lg">
+              <p className="mt-6 max-w-lg text-base leading-8 text-primary-foreground xl:text-lg">
                 GymQuest turns consistent training into visible progress, shared
                 motivation, and a reason to keep showing up.
               </p>
@@ -161,7 +161,7 @@ export function AuthShell({
                     </CardTitle>
                     <Dumbbell className="size-4 shrink-0" aria-hidden="true" />
                   </div>
-                  <CardDescription className="text-primary-foreground/70">
+                  <CardDescription className="text-primary-foreground">
                     A simple rhythm makes the hard days easier to come back to.
                   </CardDescription>
                 </CardHeader>
@@ -172,7 +172,7 @@ export function AuthShell({
                         <span className="flex size-5 items-center justify-center rounded-full bg-primary-foreground/15">
                           <Check className="size-3" aria-hidden="true" />
                         </span>
-                        <span className="text-primary-foreground/80">{item}</span>
+                        <span className="text-primary-foreground">{item}</span>
                       </div>
                     ),
                   )}
@@ -180,7 +180,7 @@ export function AuthShell({
               </Card>
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-primary-foreground/15 pt-6 text-sm text-primary-foreground/70">
+            <div className="flex items-center justify-between gap-4 border-t border-primary-foreground/15 pt-6 text-sm text-primary-foreground">
               <span>Built for the long game.</span>
               <span className="inline-flex items-center gap-2">
                 <span className="size-2 rounded-full bg-primary-foreground/70" />

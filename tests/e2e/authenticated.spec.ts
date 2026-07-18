@@ -6,7 +6,7 @@ test("an authenticated user can open the application dashboard", async ({
   await page.goto("/user")
 
   await expect(page).not.toHaveURL(/\/signin/)
-  await expect(page.locator("main")).toBeVisible()
+  await expect(page.getByRole("main")).toBeVisible()
 })
 
 test("a normal user cannot open an administrator page", async ({ page }) => {

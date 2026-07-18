@@ -82,7 +82,7 @@ export default async function ActiveWorkoutSummary({
   );
 
   return (
-    <main className="w-full pb-10">
+    <div className="w-full pb-10">
       <div className="border-b pb-6 pt-2">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -193,7 +193,7 @@ export default async function ActiveWorkoutSummary({
           Back to workouts
         </Link>
       </Button>
-    </main>
+    </div>
   );
 }
 
