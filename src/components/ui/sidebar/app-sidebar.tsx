@@ -157,7 +157,11 @@ export const sidebarData: SidebarData = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  appVersion: string
+}
+
+export function AppSidebar({ appVersion, ...props }: AppSidebarProps) {
   const currentUrl = usePathname()
   const currentPath = currentUrl.split("?")[0] ?? currentUrl
 
@@ -177,7 +181,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <ActiveUsers />
-        <NavUser  />
+        <NavUser appVersion={appVersion} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

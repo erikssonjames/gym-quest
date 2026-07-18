@@ -5,11 +5,13 @@ import { UserSettingsProvider } from "./_components/user-settings-provider";
 import { STANDARD_BORDER_RADIUS, STANDARD_COLOR_THEME } from "@/variables/settings";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/ui/sidebar/app-sidebar";
+import packageJson from "../../../../package.json";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   await redirectIfNoSession()
 
   const { userSettings } = await api.user.getMe()
+  const appVersion = process.env.APP_VERSION ?? `${packageJson.version}-dev`
 
   return (
     <UserSettingsProvider 
@@ -17,7 +19,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       initialBorderRadius={userSettings?.borderRadius ?? STANDARD_BORDER_RADIUS}
     >
       <SidebarProvider>
-        <AppSidebar />
+        <AppSidebar appVersion={appVersion} />
         <SidebarInset>
           <Navbar />
           {children}
