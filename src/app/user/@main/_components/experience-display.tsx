@@ -42,7 +42,7 @@ export default function ExperienceDisplay() {
               <span>{progression.totalExperience.toLocaleString()} total XP</span>
             </div>
             <Progress value={progression.progressPercent} variant="warning" className="h-2" />
-            <p className="text-xs text-muted-foreground">Collect quests and achievements to level up.</p>
+            <p className="text-xs text-muted-foreground">Finish workouts, collect quests, and unlock achievements to level up.</p>
           </div>
         </TooltipContent>
       </Tooltip>

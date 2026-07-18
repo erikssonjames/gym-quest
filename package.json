@@ -8,6 +8,8 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:migrate": "drizzle-kit migrate",
+    "db:catalog": "tsx src/server/db/seed.ts --catalog-only",
+    "db:catalog:production": "tsx src/server/db/seed.ts --catalog-only --production",
     "db:seed": "tsx src/server/db/seed.ts",
     "db:setup": "npm run db:up && npm run db:migrate && npm run db:seed",
     "db:test:down": "docker compose --project-name gym-quest-test -f compose.test.yaml down",

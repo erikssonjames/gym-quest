@@ -46,8 +46,23 @@ npm run db:up       # Start this project's PostgreSQL service
 npm run db:down     # Stop it without deleting its data
 npm run db:migrate  # Apply pending Drizzle migrations
 npm run db:seed     # Idempotently load default development data
+npm run db:catalog  # Import only the public exercise and muscle catalog
 npm run db:logs     # Follow PostgreSQL logs
 ```
+
+To update a hosted catalog without touching seeded users, badges, or workouts,
+run the production command in the hosted environment where `DATABASE_URL` and
+`DATABASE_SSL` are already injected. `PRODUCTION_DATABASE_URL` and
+`PRODUCTION_DATABASE_SSL` can be supplied as explicit overrides when running
+the import from a separate administration environment.
+
+```bash
+npm run db:catalog:production
+```
+
+The production command refuses local database URLs, stops on conflicting
+global names, preserves user-owned records, and verifies catalog counts inside
+the transaction before committing.
 
 The default connection is:
 

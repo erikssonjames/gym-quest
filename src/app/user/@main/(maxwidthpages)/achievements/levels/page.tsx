@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Award, ScrollText, Sparkles } from "lucide-react"
+import { ArrowRight, Award, Dumbbell, ScrollText, Sparkles } from "lucide-react"
 
 import { MetricCard, PageSection, PageShell } from "@/app/user/@main/_components/page-shell"
 import { Badge } from "@/components/ui/badge"
@@ -19,7 +19,7 @@ export default function LevelsPage() {
     <PageShell
       eyebrow="Progression"
       title="Experience and levels"
-      description="Collect quest rewards and unlock achievements to earn XP. Your total experience determines your level."
+      description="Finish workouts, collect quest rewards, and unlock achievements to earn XP. Your total experience determines your level."
       actions={(
         <Button asChild>
           <Link href="/user/quests">
@@ -41,7 +41,7 @@ export default function LevelsPage() {
         </div>
       )}
 
-      <PageSection title="Current level" description="Each new level requires slightly more XP than the last.">
+      <PageSection title="Current level" description="Each new level requires exactly 1,000 XP more than the last.">
         <Card className="border-warning/40 bg-warning/5 shadow-md">
           <CardHeader className="gap-3">
             <div className="flex items-center justify-between gap-3">
@@ -61,7 +61,15 @@ export default function LevelsPage() {
       </PageSection>
 
       <PageSection title="Earn experience" description="Rewards come from the parts of GymQuest that mark real progress.">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-success/10 text-success"><Dumbbell className="size-5" /></div>
+              <CardTitle className="text-lg">Finish workouts</CardTitle>
+              <CardDescription>Completed sets automatically award XP for reps, weight moved, and active time.</CardDescription>
+            </CardHeader>
+            <CardContent><Button asChild variant="outline" size="sm"><Link href="/user/workouts/active/create">Start a workout</Link></Button></CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <div className="flex size-10 items-center justify-center rounded-xl bg-info/10 text-info"><ScrollText className="size-5" /></div>
@@ -79,6 +87,23 @@ export default function LevelsPage() {
             <CardContent><Button asChild variant="outline" size="sm"><Link href="/user/achievements">View achievements</Link></Button></CardContent>
           </Card>
         </div>
+      </PageSection>
+
+      <PageSection title="How levels scale" description="The ladder has no fixed final level.">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">A steady climb</CardTitle>
+            <CardDescription>
+              Level 2 starts at 500 total XP. The XP needed for each following level rises by 1,000,
+              so level 99 to 100 requires 98,500 XP.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Total XP for level L is calculated as 500 × (L − 1)².
+            </p>
+          </CardContent>
+        </Card>
       </PageSection>
 
     </PageShell>

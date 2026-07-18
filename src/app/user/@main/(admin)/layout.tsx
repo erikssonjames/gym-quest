@@ -6,7 +6,7 @@ import RedirectNonAdminClientSide from "./_components/redirect-non-admin-client-
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const session = await auth()
 
-  if (session?.user.role !== "admin") {
+  if (!session?.user.role || !["admin", "superAdmin"].includes(session.user.role)) {
     redirect("/user")
   }
 

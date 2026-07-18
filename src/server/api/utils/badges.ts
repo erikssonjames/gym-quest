@@ -1,12 +1,10 @@
 import { type Badge, badgeProgress, badgeProgressEvent } from "@/server/db/schema/badges";
 import type { WorkoutSession, WorkoutSessionLog, WorkoutSessionLogFragment } from "@/server/db/schema/workout";
-import { getCtxUserId } from "@/server/utils/user";
-import type { TRPCContext } from "@/trpc/server";
 import { BADGE_GROUP_RECORD, BADGE_GROUPS, type BadgeLiteral, type BadgeGroupName } from "@/variables/badges";
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { ensureBadgeProgressRows } from "@/server/services/user-provisioning";
-import { awardExperience } from "@/server/services/progression";
+import { awardExperience, type DatabaseExecutor } from "@/server/services/progression";
 import { getBadgeExperience } from "@/lib/experience";
 
 type Session = WorkoutSession & {
@@ -17,17 +15,15 @@ type Session = WorkoutSession & {
   >
 }
 
-const SOFT_LIMIT_WEIGHT = 100000
-
 /**
  * The main entry point to handle badges progress after a new workout session is completed.
  */
 export async function handleBadgeProgressFromWorkoutSession(
-  ctx: NonNullable<TRPCContext>,
+  executor: DatabaseExecutor,
+  userId: string,
   session: Session
 ): Promise<Badge[]> {
-  const userId = getCtxUserId(ctx);
-  await ensureBadgeProgressRows(ctx.db, userId);
+  await ensureBadgeProgressRows(executor, userId);
 
   // Decide which badge groups we want to process
   const relevantBadgeGroups: BadgeGroupName[] = [
@@ -44,7 +40,7 @@ export async function handleBadgeProgressFromWorkoutSession(
   });
 
   // Fetch current progress for this user for only those badges
-  const usersCurrentProgress = await ctx.db.query.badgeProgress.findMany({
+  const usersCurrentProgress = await executor.query.badgeProgress.findMany({
     where: and(
       inArray(badgeProgress.badgeId, relevantBadgeIds),
       eq(badgeProgress.userId, userId),
@@ -59,15 +55,15 @@ export async function handleBadgeProgressFromWorkoutSession(
   const updatedBadges: Badge[] = [];
 
   // 1) Handle weight-lifting badges
-  const weightLiftingUpdated = await updateWeightLiftingProgress(ctx, session, userId, usersCurrentProgress);
+  const weightLiftingUpdated = await updateWeightLiftingProgress(executor, session, userId, usersCurrentProgress);
   updatedBadges.push(...weightLiftingUpdated);
 
   // 2) Handle frequent-lifter badges
-  const frequentLifterUpdated = await updateFrequentLifterProgress(ctx, userId, usersCurrentProgress);
+  const frequentLifterUpdated = await updateFrequentLifterProgress(executor, userId, usersCurrentProgress);
   updatedBadges.push(...frequentLifterUpdated);
 
   // 3) Handle consistent-lifter (consecutive-day) badges
-  const consistentLifterUpdated = await updateConsistentLifterProgress(ctx, userId, usersCurrentProgress);
+  const consistentLifterUpdated = await updateConsistentLifterProgress(executor, userId, usersCurrentProgress);
   updatedBadges.push(...consistentLifterUpdated);
 
   return updatedBadges;
@@ -82,7 +78,7 @@ export async function handleBadgeProgressFromWorkoutSession(
  * - Unlocks badges if needed
  */
 async function updateWeightLiftingProgress(
-  ctx: NonNullable<TRPCContext>,
+  executor: DatabaseExecutor,
   session: Session,
   userId: string,
   usersCurrentProgress: Array<{
@@ -107,13 +103,6 @@ async function updateWeightLiftingProgress(
     }, 0),
     0,
   );
-
-  if (weightLiftedThisSession > SOFT_LIMIT_WEIGHT) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Suspicious amount of weight lifted for this session. Please contact support.",
-    });
-  }
 
   // 2) Validate that the user’s completed weight-lifting badges are in correct group order
   const weightLiftingBadges = BADGE_GROUP_RECORD.weight_lifting.map((b) => b.id);
@@ -167,15 +156,15 @@ async function updateWeightLiftingProgress(
       // Subtract only the portion that actually unlocks it
       weightLeftSum -= missingToTarget;
 
-      await ctx.db.insert(badgeProgressEvent).values({
+      await executor.insert(badgeProgressEvent).values({
         badgeProgressId: progress.id,
         value: missingToTarget,
       });
-      await unlockBadge(ctx, progress.badge);
+      await unlockBadge(executor, userId, progress.badge);
       unlockedBadges.push(progress.badge);
     } else {
       // Did not unlock the badge, but we do add the partial event
-      await ctx.db.insert(badgeProgressEvent).values({
+      await executor.insert(badgeProgressEvent).values({
         badgeProgressId: progress.id,
         value: weightLeftSum,
       });
@@ -192,7 +181,7 @@ async function updateWeightLiftingProgress(
  * - Unlocks next badge if target is reached
  */
 async function updateFrequentLifterProgress(
-  ctx: NonNullable<TRPCContext>,
+  executor: DatabaseExecutor,
   userId: string,
   usersCurrentProgress: Array<{
     id: string;
@@ -248,23 +237,23 @@ async function updateFrequentLifterProgress(
     const target = progress.badge.valueToComplete;
     // If user’s current total is already enough, unlock immediately
     if (completedWorkouts >= target) {
-      await unlockBadge(ctx, progress.badge);
+      await unlockBadge(executor, userId, progress.badge);
       unlockedBadges.push(progress.badge);
     }
     // If adding +1 hits or surpasses the target, unlock
     else if (completedWorkouts + 1 >= target) {
       addedEvent = true;
-      await ctx.db.insert(badgeProgressEvent).values({
+      await executor.insert(badgeProgressEvent).values({
         badgeProgressId: progress.id,
         value: 1,
       });
-      await unlockBadge(ctx, progress.badge);
+      await unlockBadge(executor, userId, progress.badge);
       unlockedBadges.push(progress.badge);
     }
     // Otherwise, just increment the count by +1, but don’t unlock
     else {
       addedEvent = true;
-      await ctx.db.insert(badgeProgressEvent).values({
+      await executor.insert(badgeProgressEvent).values({
         badgeProgressId: progress.id,
         value: 1,
       });
@@ -278,7 +267,7 @@ async function updateFrequentLifterProgress(
  * Handle "consistent_lifter" badges, i.e. counting consecutive workouts/day streaks.
  */
 async function updateConsistentLifterProgress(
-  ctx: NonNullable<TRPCContext>,
+  executor: DatabaseExecutor,
   userId: string,
   usersCurrentProgress: Array<{
     id: string;
@@ -329,23 +318,23 @@ async function updateConsistentLifterProgress(
     const target = progress.badge.valueToComplete;
     // If user’s streak is already >= target, unlock immediately
     if (workoutsInARow >= target) {
-      await unlockBadge(ctx, progress.badge);
+      await unlockBadge(executor, userId, progress.badge);
       unlockedBadges.push(progress.badge);
     }
     // If adding +1 day hits or surpasses the target, unlock
     else if (workoutsInARow + 1 >= target) {
       addedConsistentEvent = true;
-      await ctx.db.insert(badgeProgressEvent).values({
+      await executor.insert(badgeProgressEvent).values({
         badgeProgressId: progress.id,
         value: 1,
       });
-      await unlockBadge(ctx, progress.badge);
+      await unlockBadge(executor, userId, progress.badge);
       unlockedBadges.push(progress.badge);
     }
     // Otherwise, just add the day but don’t unlock
     else {
       addedConsistentEvent = true;
-      await ctx.db.insert(badgeProgressEvent).values({
+      await executor.insert(badgeProgressEvent).values({
         badgeProgressId: progress.id,
         value: 1,
       });
@@ -360,10 +349,12 @@ async function updateConsistentLifterProgress(
 /**
  * Unlock a badge (set completed = true) for the current user.
  */
-export async function unlockBadge(ctx: NonNullable<TRPCContext>, badgeToUnlock: Badge) {
-  const userId = getCtxUserId(ctx);
-
-  const unlocked = await ctx.db.update(badgeProgress).set({
+export async function unlockBadge(
+  executor: DatabaseExecutor,
+  userId: string,
+  badgeToUnlock: Badge,
+) {
+  const unlocked = await executor.update(badgeProgress).set({
     completed: true,
   }).where(and(
     eq(badgeProgress.badgeId, badgeToUnlock.id),
@@ -372,11 +363,11 @@ export async function unlockBadge(ctx: NonNullable<TRPCContext>, badgeToUnlock: 
   )).returning({ id: badgeProgress.id });
 
   if (unlocked.length > 0) {
-    await awardExperience(ctx.db, {
+    await awardExperience(executor, {
       userId,
       source: "badge",
       sourceId: badgeToUnlock.id,
-      amount: getBadgeExperience(badgeToUnlock.groupWeighting),
+      amount: getBadgeExperience(badgeToUnlock.group, badgeToUnlock.groupWeighting),
     });
   }
 }

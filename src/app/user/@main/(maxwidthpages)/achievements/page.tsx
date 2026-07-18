@@ -97,7 +97,7 @@ export default function AchievementsPage () {
                             unlocked={badgeProgress?.completed ?? false}
                           />
                           <div className="flex items-center gap-2">
-                            <Badge variant="warning">+{getBadgeExperience(badge.groupWeighting)} XP</Badge>
+                            <Badge variant="warning">+{getBadgeExperience(badge.group, badge.groupWeighting)} XP</Badge>
                             {badgeProgress?.completed ? (
                               <Badge variant="success">Unlocked</Badge>
                             ) : (

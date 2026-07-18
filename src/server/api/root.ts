@@ -12,6 +12,7 @@ import { billingRouter } from "./routers/billing"
 import { weightRouter } from "./routers/weight"
 import { progressionRouter } from "./routers/progression"
 import { questsRouter } from "./routers/quests"
+import { experienceReviewsRouter } from "./routers/experience-reviews"
 
 /**
  * This is the primary router for your server.
@@ -31,6 +32,7 @@ export const appRouter = createTRPCRouter({
   weight: weightRouter,
   progression: progressionRouter,
   quests: questsRouter,
+  experienceReviews: experienceReviewsRouter,
 });
 
 // export type definition of API

@@ -9,6 +9,8 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.string().url(),
     DATABASE_SSL: z.enum(["false", "true", "require"]).default("false"),
+    PRODUCTION_DATABASE_URL: z.string().url().optional(),
+    PRODUCTION_DATABASE_SSL: z.enum(["false", "true", "require"]).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -55,6 +57,8 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_SSL: process.env.DATABASE_SSL,
+    PRODUCTION_DATABASE_URL: process.env.PRODUCTION_DATABASE_URL,
+    PRODUCTION_DATABASE_SSL: process.env.PRODUCTION_DATABASE_SSL,
     NODE_ENV: process.env.NODE_ENV,
     HOST_URL: process.env.HOST_URL,
     AUTH_SECRET: process.env.AUTH_SECRET,

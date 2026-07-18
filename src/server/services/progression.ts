@@ -1,6 +1,12 @@
 import { and, count, eq, inArray, lt, lte, ne, or, sql } from "drizzle-orm"
 
-import { getBadgeExperience, getLevelFromExperience } from "@/lib/experience"
+import {
+  EXPERIENCE_SOURCE,
+  getBadgeExperience,
+  getLevelFromExperience,
+  getWorkoutExperience,
+  toSafeExperienceNumber,
+} from "@/lib/experience"
 import { type db } from "@/server/db"
 import { badge, badgeProgress } from "@/server/db/schema/badges"
 import { experienceEvent } from "@/server/db/schema/progression"
@@ -20,6 +26,28 @@ export async function awardExperience(
     .values(input)
     .onConflictDoNothing()
     .returning({ id: experienceEvent.id })
+}
+
+export async function awardWorkoutExperience(
+  executor: DatabaseExecutor,
+  input: {
+    session: Parameters<typeof getWorkoutExperience>[0]
+    sessionId: string
+    userId: string
+  },
+) {
+  const experience = getWorkoutExperience(input.session)
+
+  if (experience.total > 0) {
+    await awardExperience(executor, {
+      userId: input.userId,
+      source: EXPERIENCE_SOURCE.workout,
+      sourceId: input.sessionId,
+      amount: experience.total,
+    })
+  }
+
+  return experience
 }
 
 export async function ensureEarlyUserBadge(
@@ -82,7 +110,11 @@ export async function syncAchievementExperience(
   userId: string,
 ) {
   const completedBadges = await executor
-    .select({ id: badge.id, groupWeighting: badge.groupWeighting })
+    .select({
+      group: badge.group,
+      groupWeighting: badge.groupWeighting,
+      id: badge.id,
+    })
     .from(badgeProgress)
     .innerJoin(badge, eq(badge.id, badgeProgress.badgeId))
     .where(and(
@@ -98,7 +130,7 @@ export async function syncAchievementExperience(
       userId,
       source: "badge",
       sourceId: completedBadge.id,
-      amount: getBadgeExperience(completedBadge.groupWeighting),
+      amount: getBadgeExperience(completedBadge.group, completedBadge.groupWeighting),
     })))
     .onConflictDoNothing()
 }
@@ -109,10 +141,10 @@ export async function getUserProgression(
 ) {
   await syncAchievementExperience(executor, userId)
 
-  const [{ total } = { total: 0 }] = await executor
-    .select({ total: sql<number>`coalesce(sum(${experienceEvent.amount}), 0)::int` })
+  const [{ total } = { total: "0" }] = await executor
+    .select({ total: sql<string>`coalesce(sum(${experienceEvent.amount}), 0)::text` })
     .from(experienceEvent)
     .where(eq(experienceEvent.userId, userId))
 
-  return getLevelFromExperience(total)
+  return getLevelFromExperience(toSafeExperienceNumber(total))
 }

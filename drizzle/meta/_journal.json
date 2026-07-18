@@ -64,6 +64,20 @@
       "when": 1783799773903,
       "tag": "0008_progression",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784389109414,
+      "tag": "0009_faster_experience_economy",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784390272603,
+      "tag": "0010_workout_experience_reviews",
+      "breakpoints": true
     }
   ]
 }

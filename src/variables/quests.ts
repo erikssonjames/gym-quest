@@ -7,7 +7,7 @@ export const QUEST_DEFINITIONS = [
     metric: "workouts",
     target: 1,
     unit: "workout",
-    experience: 100,
+    experience: 300,
   },
   {
     id: "daily-sets",
@@ -17,7 +17,7 @@ export const QUEST_DEFINITIONS = [
     metric: "sets",
     target: 8,
     unit: "sets",
-    experience: 75,
+    experience: 400,
   },
   {
     id: "weekly-sessions",
@@ -27,7 +27,7 @@ export const QUEST_DEFINITIONS = [
     metric: "workouts",
     target: 3,
     unit: "workouts",
-    experience: 250,
+    experience: 1200,
   },
   {
     id: "weekly-volume",
@@ -37,7 +37,7 @@ export const QUEST_DEFINITIONS = [
     metric: "volume",
     target: 5000,
     unit: "kg",
-    experience: 200,
+    experience: 1000,
   },
   {
     id: "journey-five",
@@ -47,7 +47,7 @@ export const QUEST_DEFINITIONS = [
     metric: "workouts",
     target: 5,
     unit: "workouts",
-    experience: 300,
+    experience: 3000,
   },
 ] as const
 

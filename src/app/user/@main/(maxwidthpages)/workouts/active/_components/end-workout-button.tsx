@@ -13,17 +13,23 @@ export default function EndWorkoutButton ({ workoutSessionId }: { workoutSession
   const utils = api.useUtils()
 
   const { mutate, isPending } = api.workout.endWorkoutSession.useMutation({
-    onSuccess: async (sessionId) => {
+    onSuccess: async (result) => {
       await utils.workout.getActiveWorkoutSession.invalidate()
       await Promise.all([
         utils.quests.getQuestBoard.invalidate(),
         utils.progression.getProgression.invalidate(),
         utils.badges.getBadgesWithProgress.invalidate(),
       ])
-      toast.success("Ended workout.")
+      toast.success("Workout complete!", {
+        description: result?.experiencePendingReview
+          ? "Your XP is pending an admin safety review."
+          : result?.experienceAwarded
+            ? `+${result.experienceAwarded.toLocaleString()} XP earned.`
+            : "No workout XP was earned.",
+      })
 
-      if (sessionId) {
-        router.push(`/user/workouts/active/completed/${sessionId}`)
+      if (result) {
+        router.push(`/user/workouts/active/completed/${result.sessionId}`)
       } else {
         router.push("/user/workouts")
       }

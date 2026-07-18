@@ -44,6 +44,7 @@ import { assessWorkoutDraftQuality } from "@/server/ai/workout-quality";
 import { workoutAiDailyLimiter, workoutAiMinuteLimiter } from "@/server/limiters";
 import { AiQuotaExceededError, estimateWorkoutAiTokens, finalizeAiTokens, releaseAiTokens, reserveAiTokens } from "@/server/services/ai-usage";
 import { getEffectiveBillingPlan } from "@/server/services/billing-catalog";
+import { completeWorkoutWithExperience } from "@/server/services/workout-completion";
 
 function sortWorkoutResponse (workouts: Array<FullWorkout>) {
   return workouts.map(w => {
@@ -1035,7 +1036,8 @@ export const workoutRouter = createTRPCRouter({
               workoutSessionLogFragments: true
             }
           },
-          workout: true
+          workout: true,
+          experienceReview: true,
         }
       })
 
@@ -1725,6 +1727,7 @@ export const workoutRouter = createTRPCRouter({
         with: {
           workoutSessionLogs: {
             with: {
+              exercise: true,
               workoutSessionLogFragments: true
             }
           },
@@ -1734,21 +1737,6 @@ export const workoutRouter = createTRPCRouter({
       if (!session) return null
 
       const endedAt = new Date()
-
-      await ctx.db.update(workoutSession).set({
-        startedAt: session.startedAt ?? endedAt,
-        endedAt
-      }).where(eq(workoutSession.id, session.id))
-
-      emitServerSocketEvent({
-        event: WorkoutEvent.ENDED_WORKOUT,
-        recipients: await getUserFriendsIds(ctx),
-        payload: {
-          sentAt: endedAt,
-          userId: userId
-        }
-      })
-
       const performedSession = {
         ...session,
         workoutSessionLogs: session.workoutSessionLogs.map(log => ({
@@ -1763,15 +1751,34 @@ export const workoutRouter = createTRPCRouter({
         0
       )
 
-      if (performedSetCount > 0) {
+      const completion = await completeWorkoutWithExperience(ctx.db, {
+        endedAt,
+        session,
+        userId,
+      })
+
+      if (!completion) return null
+
+      emitServerSocketEvent({
+        event: WorkoutEvent.ENDED_WORKOUT,
+        recipients: await getUserFriendsIds(ctx),
+        payload: {
+          sentAt: endedAt,
+          userId: userId
+        }
+      })
+
+      if (performedSetCount > 0 && !completion.pendingReview) {
         try {
-          await handleBadgeProgressFromWorkoutSession(ctx, performedSession)
+          await handleBadgeProgressFromWorkoutSession(ctx.db, userId, performedSession)
         } catch (error) {
           console.error("Could not update badge progress for workout session", error)
         }
       }
-
-
-      return session.id
+      return {
+        experienceAwarded: completion.pendingReview ? 0 : completion.experience.total,
+        experiencePendingReview: completion.pendingReview,
+        sessionId: session.id,
+      }
     })
 });

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { getLevelFromExperience, getWorkoutExperience } from "@/lib/experience";
 import { api } from "@/trpc/server";
 import { TRPCError } from "@trpc/server";
 import { format, formatDistanceStrict } from "date-fns";
@@ -9,9 +10,11 @@ import {
   Dumbbell,
   Gauge,
   SkipForward,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { WorkoutExperienceSummary } from "../_components/workout-experience-summary";
 
 export default async function ActiveWorkoutSummary({
   params,
@@ -21,15 +24,19 @@ export default async function ActiveWorkoutSummary({
   const sessionId = (await params).sessionId;
 
   let session;
+  let progression;
   try {
-    session = await api.workout.getWorkoutSessionById(sessionId);
+    [session, progression] = await Promise.all([
+      api.workout.getWorkoutSessionById(sessionId),
+      api.progression.getProgression(),
+    ]);
   } catch (error) {
     if (error instanceof TRPCError && error.code === "BAD_REQUEST") {
       redirect("/user/workouts/active");
     }
   }
 
-  if (!session) redirect("/user/workouts");
+  if (!session || !progression) redirect("/user/workouts");
 
   const performedLogs = session.workoutSessionLogs
     .map((log) => ({
@@ -65,6 +72,14 @@ export default async function ActiveWorkoutSummary({
     session.startedAt && session.endedAt
       ? formatDistanceStrict(session.startedAt, session.endedAt)
       : "0 minutes";
+  const experience = getWorkoutExperience(session);
+  const reviewStatus = session.experienceReview?.status ?? null;
+  const experienceAwarded = reviewStatus === "pending" || reviewStatus === "rejected"
+    ? 0
+    : experience.total;
+  const beforeProgression = getLevelFromExperience(
+    Math.max(0, progression.totalExperience - experienceAwarded),
+  );
 
   return (
     <main className="w-full pb-10">
@@ -91,7 +106,7 @@ export default async function ActiveWorkoutSummary({
 
       <section
         aria-label="Workout totals"
-        className="grid grid-cols-2 border-b md:grid-cols-4"
+        className="grid grid-cols-2 border-b md:grid-cols-5"
       >
         <SummaryMetric icon={<Clock3 />} label="Duration" value={duration} />
         <SummaryMetric
@@ -109,7 +124,21 @@ export default async function ActiveWorkoutSummary({
           label="Not performed"
           value={skippedSets.toString()}
         />
+        <SummaryMetric
+          icon={<Sparkles />}
+          label="Experience"
+          value={reviewStatus === "pending"
+            ? "Pending review"
+            : `+${experienceAwarded.toLocaleString()} XP`}
+        />
       </section>
+
+      <WorkoutExperienceSummary
+        afterProgression={progression}
+        beforeProgression={beforeProgression}
+        experience={experience}
+        reviewStatus={reviewStatus}
+      />
 
       <section className="py-6">
         <div className="mb-4 flex items-end justify-between gap-4">

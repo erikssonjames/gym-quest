@@ -51,7 +51,7 @@ export function BadgeComponent (
             <div>
               <div className="flex gap-6 items-center justify-between w-full">
                 <p className="font-semibold">{foundBadge.name}</p>
-                <StatusBadge variant="secondary">+{getBadgeExperience(foundBadge.groupWeighting)} XP</StatusBadge>
+                <StatusBadge variant="secondary">+{getBadgeExperience(foundBadge.group, foundBadge.groupWeighting)} XP</StatusBadge>
               </div>
 
               {unlocked ? (

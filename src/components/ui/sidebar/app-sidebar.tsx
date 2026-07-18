@@ -12,6 +12,7 @@ import {
   Scale,
   ScrollText,
   Settings2,
+  ShieldAlert,
   Tag,
   Trophy,
   Users,
@@ -127,6 +128,11 @@ export const sidebarData: SidebarData = {
     },
   ],
   navAdmin: [
+    {
+      title: "XP Reviews",
+      url: "/user/experience-reviews",
+      icon: ShieldAlert,
+    },
     {
       title: "Muscles",
       url: "/user/muscles",

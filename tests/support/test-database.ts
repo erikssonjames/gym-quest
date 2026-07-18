@@ -12,9 +12,11 @@ const testDatabase = createDatabase(process.env.DATABASE_URL!, {
 })
 
 export const testDb = testDatabase.db
+export const testClient = testDatabase.client
 
 export async function resetTestDatabase() {
   await testDatabase.client.unsafe("drop schema if exists public cascade")
+  await testDatabase.client.unsafe("drop schema if exists drizzle cascade")
   await testDatabase.client.unsafe("create schema public")
   await migrate(testDb, { migrationsFolder: "drizzle" })
 }

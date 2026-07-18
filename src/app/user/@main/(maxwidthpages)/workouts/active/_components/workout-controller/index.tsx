@@ -161,7 +161,7 @@ export default function WorkoutController() {
 
   const handleEndWorkout = () =>
     runAction(async () => {
-      const sessionId = await endWorkout.mutateAsync(session.id);
+      const result = await endWorkout.mutateAsync(session.id);
       await invalidateSession();
       await Promise.all([
         utils.quests.getQuestBoard.invalidate(),
@@ -170,8 +170,8 @@ export default function WorkoutController() {
       ]);
 
       router.push(
-        sessionId
-          ? `/user/workouts/active/completed/${sessionId}`
+        result
+          ? `/user/workouts/active/completed/${result.sessionId}`
           : "/user/workouts",
       );
     });

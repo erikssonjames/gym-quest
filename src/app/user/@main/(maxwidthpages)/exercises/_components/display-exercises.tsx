@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react"
 import { Dumbbell, Loader2Icon, Pencil, RotateCcw, Search, Trash } from "lucide-react"
-import { memo, type ReactNode, useMemo, useState } from "react"
+import { memo, type ReactNode, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -35,6 +35,15 @@ import {
 } from "@/components/ui/empty"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -43,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import type { Muscle } from "@/server/db/schema/body"
 import type { Exercise } from "@/server/db/schema/exercise"
 import { api } from "@/trpc/react"
@@ -50,6 +60,25 @@ import EditExerciseForm from "./edit-exercise-form"
 
 type ExerciseScope = "all" | "mine" | "public"
 type ExerciseSort = "name-asc" | "name-desc" | "muscles-desc"
+type PageToken = number | "ellipsis-start" | "ellipsis-end"
+
+const EXERCISES_PER_PAGE = 24
+
+function getPageTokens(currentPage: number, totalPages: number): PageToken[] {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis-end", totalPages]
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis-start", totalPages - 2, totalPages - 1, totalPages]
+  }
+
+  return [1, "ellipsis-start", currentPage, "ellipsis-end", totalPages]
+}
 
 function DisplayExercises() {
   const { data: exercises, isPending, isError } = api.exercise.getExercises.useQuery()
@@ -58,6 +87,7 @@ function DisplayExercises() {
   const [muscleId, setMuscleId] = useState("all")
   const [scope, setScope] = useState<ExerciseScope>("all")
   const [sort, setSort] = useState<ExerciseSort>("name-asc")
+  const [page, setPage] = useState(1)
 
   const muscles = useMemo(() => {
     const byId = new Map<string, Muscle>()
@@ -91,12 +121,29 @@ function DisplayExercises() {
       })
   }, [exercises, muscleId, scope, search, session?.user.id, sort])
 
+  const totalPages = Math.max(1, Math.ceil(filteredExercises.length / EXERCISES_PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const pageTokens = getPageTokens(currentPage, totalPages)
+  const pageStart = (currentPage - 1) * EXERCISES_PER_PAGE
+  const visibleExercises = filteredExercises.slice(pageStart, pageStart + EXERCISES_PER_PAGE)
+  const firstVisibleExercise = filteredExercises.length === 0 ? 0 : pageStart + 1
+  const lastVisibleExercise = Math.min(pageStart + EXERCISES_PER_PAGE, filteredExercises.length)
+
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages))
+  }, [totalPages])
+
   const hasFilters = search.length > 0 || muscleId !== "all" || scope !== "all" || sort !== "name-asc"
   const resetFilters = () => {
     setSearch("")
     setMuscleId("all")
     setScope("all")
     setSort("name-asc")
+    setPage(1)
+  }
+
+  const changePage = (nextPage: number) => {
+    setPage(Math.min(Math.max(nextPage, 1), totalPages))
   }
 
   return (
@@ -120,11 +167,17 @@ function DisplayExercises() {
               value={search}
               placeholder="Search exercises or muscles"
               aria-label="Search exercises"
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setPage(1)
+              }}
             />
           </InputGroup>
 
-          <Select value={muscleId} onValueChange={setMuscleId}>
+          <Select value={muscleId} onValueChange={(value) => {
+            setMuscleId(value)
+            setPage(1)
+          }}>
             <SelectTrigger className="min-w-0 xl:col-span-2" aria-label="Filter by muscle">
               <SelectValue placeholder="All muscles" />
             </SelectTrigger>
@@ -138,7 +191,10 @@ function DisplayExercises() {
             </SelectContent>
           </Select>
 
-          <Select value={scope} onValueChange={(value) => setScope(value as ExerciseScope)}>
+          <Select value={scope} onValueChange={(value) => {
+            setScope(value as ExerciseScope)
+            setPage(1)
+          }}>
             <SelectTrigger className="min-w-0 xl:col-span-2" aria-label="Filter by visibility">
               <SelectValue />
             </SelectTrigger>
@@ -151,7 +207,10 @@ function DisplayExercises() {
             </SelectContent>
           </Select>
 
-          <Select value={sort} onValueChange={(value) => setSort(value as ExerciseSort)}>
+          <Select value={sort} onValueChange={(value) => {
+            setSort(value as ExerciseSort)
+            setPage(1)
+          }}>
             <SelectTrigger className="min-w-0 xl:col-span-2" aria-label="Sort exercises">
               <SelectValue />
             </SelectTrigger>
@@ -171,7 +230,7 @@ function DisplayExercises() {
         </CardContent>
       </Card>
 
-      <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div id="exercise-results" className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
         {isPending && Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} className="h-64 rounded-xl" />
         ))}
@@ -186,7 +245,7 @@ function DisplayExercises() {
           </Empty>
         )}
 
-        {filteredExercises.map((item) => {
+        {visibleExercises.map((item) => {
           const { muscles: exerciseMuscles, requestToBePublic, ...exercise } = item
           return (
             <ExerciseCard
@@ -218,6 +277,67 @@ function DisplayExercises() {
           </Empty>
         )}
       </div>
+
+      {!isPending && !isError && filteredExercises.length > 0 && (
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            Showing {firstVisibleExercise}{"\u2013"}{lastVisibleExercise} of {filteredExercises.length} exercises
+          </p>
+          {totalPages > 1 && (
+            <Pagination aria-label="Exercise pages">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#exercise-results"
+                    aria-disabled={currentPage === 1}
+                    tabIndex={currentPage === 1 ? -1 : undefined}
+                    className={cn(currentPage === 1 && "pointer-events-none opacity-50")}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      changePage(currentPage - 1)
+                    }}
+                  />
+                </PaginationItem>
+
+                {pageTokens.map((token) => (
+                  typeof token === "number" ? (
+                    <PaginationItem key={token}>
+                      <PaginationLink
+                        href={`#exercise-page-${token}`}
+                        isActive={token === currentPage}
+                        aria-label={`Go to page ${token}`}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          changePage(token)
+                        }}
+                      >
+                        {token}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={token}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#exercise-results"
+                    aria-disabled={currentPage === totalPages}
+                    tabIndex={currentPage === totalPages ? -1 : undefined}
+                    className={cn(currentPage === totalPages && "pointer-events-none opacity-50")}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      changePage(currentPage + 1)
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      )}
     </div>
   )
 }

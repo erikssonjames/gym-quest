@@ -8,7 +8,7 @@ import { badge, badgeProgress, badgeProgressEvent } from "./badges"
 import { feedPost } from "./feed"
 import { aiUsageEvent, aiUsagePeriod, billingCustomer, billingEntitlement, billingPlan, billingPrice, billingSubscription, ownerRevenueLedger } from "./billing"
 import { weightEntry } from "./weight"
-import { experienceEvent, questClaim } from "./progression"
+import { experienceEvent, questClaim, workoutExperienceReview } from "./progression"
 
 // User
 
@@ -31,6 +31,7 @@ export const userRelations = relations(users, ({ many, one }) => ({
   weightEntries: many(weightEntry),
   experienceEvents: many(experienceEvent),
   questClaims: many(questClaim),
+  workoutExperienceReviews: many(workoutExperienceReview),
 }))
 
 export const experienceEventRelations = relations(experienceEvent, ({ one }) => ({
@@ -39,6 +40,13 @@ export const experienceEventRelations = relations(experienceEvent, ({ one }) => 
 
 export const questClaimRelations = relations(questClaim, ({ one }) => ({
   user: one(users, { fields: [questClaim.userId], references: [users.id] }),
+}))
+
+export const workoutExperienceReviewRelations = relations(workoutExperienceReview, ({ one }) => ({
+  workoutSession: one(workoutSession, {
+    fields: [workoutExperienceReview.workoutSessionId],
+    references: [workoutSession.id],
+  }),
 }))
 
 export const weightEntryRelations = relations(weightEntry, ({ one }) => ({
@@ -250,7 +258,8 @@ export const workoutSessionRelations = relations(workoutSession, ({ one, many })
     fields: [workoutSession.workoutId],
     references: [workout.id]
   }),
-  workoutSessionLogs: many(workoutSessionLog)
+  workoutSessionLogs: many(workoutSessionLog),
+  experienceReview: one(workoutExperienceReview),
 }))
 
 export const workoutSessionLogRelations = relations(workoutSessionLog, ({ one, many }) => ({

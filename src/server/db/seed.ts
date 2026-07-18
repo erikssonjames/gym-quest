@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import { inArray } from "drizzle-orm";
 import nextEnv from "@next/env";
 import postgres from "postgres";
 
@@ -30,9 +31,43 @@ import {
 import { badge } from "./schema/badges";
 import { BADGE_DEFINITIONS } from "@/variables/badges";
 import { SYSTEM_USER_ID } from "@/variables/auth";
+import {
+  ADDITIONAL_EXERCISES,
+  ADDITIONAL_EXERCISE_MUSCLES,
+  ADDITIONAL_MUSCLES,
+  ADDITIONAL_MUSCLE_GROUPS,
+  validateAdditionalExerciseCatalog,
+} from "./exercise-catalog";
 
 nextEnv.loadEnvConfig(process.cwd());
 const { env } = await import("@/env");
+
+const seedArguments = new Set(process.argv.slice(2));
+const catalogOnly = seedArguments.has("--catalog-only");
+const productionImport = seedArguments.has("--production");
+
+function getDatabaseConfiguration() {
+  if (!productionImport) {
+    return {
+      connectionString: env.DATABASE_URL,
+      ssl: env.DATABASE_SSL,
+    };
+  }
+
+  const connectionString = env.PRODUCTION_DATABASE_URL ?? env.DATABASE_URL;
+
+  const hostname = new URL(connectionString).hostname.toLocaleLowerCase("en-US");
+  if (["localhost", "127.0.0.1", "::1"].includes(hostname)) {
+    throw new Error("The production catalog import refuses to use a localhost database URL.");
+  }
+
+  return {
+    connectionString,
+    ssl: env.PRODUCTION_DATABASE_URL
+      ? env.PRODUCTION_DATABASE_SSL ?? "require"
+      : env.DATABASE_SSL,
+  };
+}
 
 const muscleGroups = [
   {
@@ -84,10 +119,10 @@ const muscles = [
   },
   {
     id: "11000000-0000-4000-8000-000000000003",
-    name: "Trapezius",
-    latinName: "Trapezius",
+    name: "Middle Trapezius",
+    latinName: "Trapezius, transverse fibers",
     muscleGroupId: "10000000-0000-4000-8000-000000000002",
-    description: "Upper and mid-back muscle used in rows, carries, and shrugs.",
+    description: "Retracts and stabilizes the shoulder blades during rows and horizontal pulls.",
   },
   {
     id: "11000000-0000-4000-8000-000000000004",
@@ -112,10 +147,10 @@ const muscles = [
   },
   {
     id: "11000000-0000-4000-8000-000000000007",
-    name: "Deltoids",
-    latinName: "Deltoideus",
+    name: "Anterior Deltoid",
+    latinName: "Deltoideus, pars clavicularis",
     muscleGroupId: "10000000-0000-4000-8000-000000000004",
-    description: "Shoulder muscle used in pressing, raising, and stabilizing.",
+    description: "Front shoulder fibers used in pressing and forward arm elevation.",
   },
   {
     id: "11000000-0000-4000-8000-000000000008",
@@ -250,6 +285,46 @@ const exerciseMuscles = [
   ["20000000-0000-4000-8000-000000000012", "11000000-0000-4000-8000-000000000010"],
 ] satisfies [string, string][];
 
+const catalogMuscleGroups = [...muscleGroups, ...ADDITIONAL_MUSCLE_GROUPS];
+const catalogMuscles = [...muscles, ...ADDITIONAL_MUSCLES];
+const catalogExercises = [...exercises, ...ADDITIONAL_EXERCISES];
+const catalogExerciseMuscles = [...exerciseMuscles, ...ADDITIONAL_EXERCISE_MUSCLES];
+
+function validateCatalog() {
+  validateAdditionalExerciseCatalog();
+
+  const assertUnique = (label: string, values: string[]) => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+
+    for (const value of values) {
+      const normalized = value.trim().toLocaleLowerCase("en-US");
+      if (seen.has(normalized)) duplicates.add(value);
+      seen.add(normalized);
+    }
+
+    if (duplicates.size > 0) {
+      throw new Error(`Duplicate ${label}: ${[...duplicates].join(", ")}`);
+    }
+  };
+
+  assertUnique("muscle group names", catalogMuscleGroups.map(({ name }) => name));
+  assertUnique("muscle names", catalogMuscles.map(({ name }) => name));
+  assertUnique("exercise names", catalogExercises.map(({ name }) => name));
+  assertUnique("muscle IDs", catalogMuscles.map(({ id }) => id!));
+  assertUnique("exercise IDs", catalogExercises.map(({ id }) => id!));
+
+  const exerciseIds = new Set(catalogExercises.map(({ id }) => id));
+  const muscleIds = new Set(catalogMuscles.map(({ id }) => id));
+  const invalidLinks = catalogExerciseMuscles.filter(
+    ([exerciseId, muscleId]) => !exerciseIds.has(exerciseId) || !muscleIds.has(muscleId),
+  );
+
+  if (invalidLinks.length > 0) {
+    throw new Error(`Catalog contains ${invalidLinks.length} exercise-to-muscle links with missing records.`);
+  }
+}
+
 const workouts = [
   {
     id: "30000000-0000-4000-8000-000000000001",
@@ -339,9 +414,13 @@ function collection(
 }
 
 async function seed() {
-  const client = postgres(env.DATABASE_URL, {
+  validateCatalog();
+
+  const databaseConfiguration = getDatabaseConfiguration();
+
+  const client = postgres(databaseConfiguration.connectionString, {
     max: 1,
-    ssl: env.DATABASE_SSL === "require" ? "require" : env.DATABASE_SSL === "true",
+    ssl: databaseConfiguration.ssl === "require" ? "require" : databaseConfiguration.ssl === "true",
     onnotice: () => undefined,
   });
   const db = drizzle(client);
@@ -358,36 +437,80 @@ async function seed() {
 
   try {
     await db.transaction(async (tx) => {
-      await tx
-        .insert(users)
-        .values(systemUser)
-        .onConflictDoUpdate({
-          target: users.id,
-          set: {
-            name: systemUser.name,
-            username: systemUser.username,
-            email: systemUser.email,
-          },
-        });
+      if (!catalogOnly) {
+        await tx
+          .insert(users)
+          .values(systemUser)
+          .onConflictDoUpdate({
+            target: users.id,
+            set: {
+              name: systemUser.name,
+              username: systemUser.username,
+              email: systemUser.email,
+            },
+          });
 
-      await tx
-        .insert(userPrivateInformation)
-        .values({ userId: SYSTEM_USER_ID, password: null, role: "user" })
-        .onConflictDoNothing({ target: userPrivateInformation.userId });
+        await tx
+          .insert(userPrivateInformation)
+          .values({ userId: SYSTEM_USER_ID, password: null, role: "user" })
+          .onConflictDoNothing({ target: userPrivateInformation.userId });
 
-      await tx
-        .insert(userProfile)
-        .values({ userId: SYSTEM_USER_ID, selectedBadge: null })
-        .onConflictDoNothing({ target: userProfile.userId });
+        await tx
+          .insert(userProfile)
+          .values({ userId: SYSTEM_USER_ID, selectedBadge: null })
+          .onConflictDoNothing({ target: userProfile.userId });
 
-      await tx
-        .insert(badge)
-        .values(BADGE_DEFINITIONS)
-        .onConflictDoNothing();
+        await tx
+          .insert(badge)
+          .values(BADGE_DEFINITIONS)
+          .onConflictDoNothing();
+      }
+
+      const [existingMuscleGroups, existingMuscles, existingExercises] = await Promise.all([
+        tx.select({ id: muscleGroup.id, name: muscleGroup.name }).from(muscleGroup),
+        tx.select({ id: muscle.id, name: muscle.name }).from(muscle),
+        tx.select({ id: exercise.id, name: exercise.name, userId: exercise.userId }).from(exercise),
+      ]);
+      const normalizedName = (name: string) => name.trim().toLocaleLowerCase("en-US");
+      const expectedMuscleGroupIds = new Map(
+        catalogMuscleGroups.map(({ id, name }) => [normalizedName(name), id]),
+      );
+      const expectedMuscleIds = new Map(
+        catalogMuscles.map(({ id, name }) => [normalizedName(name), id]),
+      );
+      const expectedExerciseIds = new Map(
+        catalogExercises.map(({ id, name }) => [normalizedName(name), id]),
+      );
+      const conflicts = [
+        ...existingMuscleGroups
+          .filter(({ id, name }) => {
+            const expectedId = expectedMuscleGroupIds.get(normalizedName(name));
+            return expectedId !== undefined && expectedId !== id;
+          })
+          .map(({ name }) => `muscle group "${name}"`),
+        ...existingMuscles
+          .filter(({ id, name }) => {
+            const expectedId = expectedMuscleIds.get(normalizedName(name));
+            return expectedId !== undefined && expectedId !== id;
+          })
+          .map(({ name }) => `muscle "${name}"`),
+        ...existingExercises
+          .filter(({ id, name, userId }) => {
+            const expectedId = expectedExerciseIds.get(normalizedName(name));
+            return userId === null && expectedId !== undefined && expectedId !== id;
+          })
+          .map(({ name }) => `system exercise "${name}"`),
+      ];
+
+      if (conflicts.length > 0) {
+        throw new Error(
+          `Catalog import stopped to avoid duplicate global records. Conflicts: ${conflicts.slice(0, 20).join(", ")}${conflicts.length > 20 ? `, and ${conflicts.length - 20} more` : ""}.`,
+        );
+      }
 
       await tx
         .insert(muscleGroup)
-        .values(muscleGroups)
+        .values(catalogMuscleGroups)
         .onConflictDoUpdate({
           target: muscleGroup.id,
           set: {
@@ -398,7 +521,7 @@ async function seed() {
 
       await tx
         .insert(muscle)
-        .values(muscles)
+        .values(catalogMuscles)
         .onConflictDoUpdate({
           target: muscle.id,
           set: {
@@ -411,7 +534,7 @@ async function seed() {
 
       await tx
         .insert(exercise)
-        .values(exercises)
+        .values(catalogExercises)
         .onConflictDoUpdate({
           target: exercise.id,
           set: {
@@ -419,63 +542,102 @@ async function seed() {
             description: exercise.description,
             isPublic: exercise.isPublic,
             userId: exercise.userId,
+            archivedAt: null,
           },
         });
 
       await tx
+        .delete(exerciseToMuscle)
+        .where(inArray(exerciseToMuscle.exerciseId, catalogExercises.map(({ id }) => id!)));
+
+      await tx
         .insert(exerciseToMuscle)
         .values(
-          exerciseMuscles.map(([exerciseId, muscleId]) => ({
+          catalogExerciseMuscles.map(([exerciseId, muscleId]) => ({
             exerciseId,
             muscleId,
           })),
         )
         .onConflictDoNothing();
 
-      await tx
-        .insert(workout)
-        .values(workouts)
-        .onConflictDoUpdate({
-          target: workout.id,
-          set: {
-            name: workout.name,
-            description: workout.description,
-            category: workout.category,
-            isPublic: workout.isPublic,
-            userId: workout.userId,
-          },
-        });
+      if (!catalogOnly) {
+        await tx
+          .insert(workout)
+          .values(workouts)
+          .onConflictDoUpdate({
+            target: workout.id,
+            set: {
+              name: workout.name,
+              description: workout.description,
+              category: workout.category,
+              isPublic: workout.isPublic,
+              userId: workout.userId,
+            },
+          });
 
-      await tx
-        .insert(workoutSet)
-        .values(workoutSets)
-        .onConflictDoUpdate({
-          target: workoutSet.id,
-          set: {
-            workoutId: workoutSet.workoutId,
-            order: workoutSet.order,
-          },
-        });
+        await tx
+          .insert(workoutSet)
+          .values(workoutSets)
+          .onConflictDoUpdate({
+            target: workoutSet.id,
+            set: {
+              workoutId: workoutSet.workoutId,
+              order: workoutSet.order,
+            },
+          });
 
-      await tx
-        .insert(workoutSetCollection)
-        .values(workoutSetCollections)
-        .onConflictDoUpdate({
-          target: workoutSetCollection.id,
-          set: {
-            exerciseId: workoutSetCollection.exerciseId,
-            workoutSetId: workoutSetCollection.workoutSetId,
-            weight: workoutSetCollection.weight,
-            reps: workoutSetCollection.reps,
-            restTime: workoutSetCollection.restTime,
-            duration: workoutSetCollection.duration,
-            order: workoutSetCollection.order,
-          },
-        });
+        await tx
+          .insert(workoutSetCollection)
+          .values(workoutSetCollections)
+          .onConflictDoUpdate({
+            target: workoutSetCollection.id,
+            set: {
+              exerciseId: workoutSetCollection.exerciseId,
+              workoutSetId: workoutSetCollection.workoutSetId,
+              weight: workoutSetCollection.weight,
+              reps: workoutSetCollection.reps,
+              restTime: workoutSetCollection.restTime,
+              duration: workoutSetCollection.duration,
+              order: workoutSetCollection.order,
+            },
+          });
+      }
+
+      const [savedMuscleGroups, savedMuscles, savedExercises, savedExerciseMuscles] = await Promise.all([
+        tx
+          .select({ id: muscleGroup.id })
+          .from(muscleGroup)
+          .where(inArray(muscleGroup.id, catalogMuscleGroups.map(({ id }) => id!))),
+        tx
+          .select({ id: muscle.id })
+          .from(muscle)
+          .where(inArray(muscle.id, catalogMuscles.map(({ id }) => id!))),
+        tx
+          .select({ id: exercise.id })
+          .from(exercise)
+          .where(inArray(exercise.id, catalogExercises.map(({ id }) => id!))),
+        tx
+          .select({ exerciseId: exerciseToMuscle.exerciseId, muscleId: exerciseToMuscle.muscleId })
+          .from(exerciseToMuscle)
+          .where(inArray(exerciseToMuscle.exerciseId, catalogExercises.map(({ id }) => id!))),
+      ]);
+
+      if (
+        savedMuscleGroups.length !== catalogMuscleGroups.length ||
+        savedMuscles.length !== catalogMuscles.length ||
+        savedExercises.length !== catalogExercises.length ||
+        savedExerciseMuscles.length !== catalogExerciseMuscles.length
+      ) {
+        throw new Error(
+          `Catalog verification failed inside the transaction. Saved ${savedMuscleGroups.length}/${catalogMuscleGroups.length} muscle groups, ${savedMuscles.length}/${catalogMuscles.length} muscles, ${savedExercises.length}/${catalogExercises.length} exercises, and ${savedExerciseMuscles.length}/${catalogExerciseMuscles.length} links.`,
+        );
+      }
     });
 
     console.log(
-      `Seeded ${muscleGroups.length} muscle groups, ${muscles.length} muscles, ${exercises.length} exercises, and ${workouts.length} workouts.`,
+      catalogOnly
+        ? `Imported ${catalogMuscleGroups.length} muscle groups, ${catalogMuscles.length} muscles, ${catalogExercises.length} exercises, and ${catalogExerciseMuscles.length} exercise-to-muscle links.`
+        : `Seeded ${catalogMuscleGroups.length} muscle groups, ${catalogMuscles.length} muscles, ${catalogExercises.length} exercises, ${catalogExerciseMuscles.length} exercise-to-muscle links, and ${workouts.length} workouts.`,
     );
   } finally {
     await client.end();
