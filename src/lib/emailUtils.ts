@@ -2,7 +2,9 @@ import { env } from '@/env'
 import { Resend } from 'resend'
 import { SignUpConfirmEmail } from '@/components/email/verify-email'
 
-const resend = new Resend(env.RESEND_API_KEY)
+function getResendClient() {
+  return new Resend(env.RESEND_API_KEY)
+}
 
 interface sendVerifyEmailParams {
   email: string
@@ -17,7 +19,7 @@ export default async function sendVerifyEmail({ code, email }: sendVerifyEmailPa
     }
   }
 
-  return await resend.emails.send({
+  return await getResendClient().emails.send({
     from: env.EMAIL_FROM,
     to: [email],
     subject: 'Verify Email',

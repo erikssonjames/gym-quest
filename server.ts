@@ -59,7 +59,7 @@ app.prepare().then(async () => {
     cors: {
       origin: dev
         ? ["http://localhost:4000"]
-        : ["https://gymquest.com", "https://www.gymquest.net", "https://gym-quest.onrender.com"],
+        : ["https://gymquest.jameseriksson.com", "https://gymquest.com", "https://www.gymquest.net", "https://gym-quest.onrender.com"],
       methods: ["GET", "POST"],
     }
   })
