@@ -50,9 +50,10 @@ export async function getQuestBoard(db: QuestDatabase, userId: string, now: Date
         ? weeklySessions
         : eligibleSessions
     const current = getMetricValue(definition.metric, relevantSessions)
-    const claimed = claims.some((claim) => (
+    const matchingClaim = claims.find((claim) => (
       claim.questId === definition.id && claim.periodKey === periodKey
     ))
+    const claimed = Boolean(matchingClaim)
 
     return {
       ...definition,
@@ -60,6 +61,7 @@ export async function getQuestBoard(db: QuestDatabase, userId: string, now: Date
       current,
       completed: current >= definition.target,
       claimed,
+      claimId: matchingClaim?.id ?? null,
       collectable: current >= definition.target && !claimed,
     }
   })

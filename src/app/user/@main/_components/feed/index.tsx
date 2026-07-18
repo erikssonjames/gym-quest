@@ -20,13 +20,13 @@ import EmptyWelcomeMessage from "./empty-welcome-message"
 import FeedPost from "./feed-post"
 import PostComposer from "./post-composer"
 
-type FeedScope = "community" | "mine"
+type FeedScope = "friends" | "mine"
 
 export default function Feed() {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const filter: FeedScope = searchParams.get("feed") === "mine" ? "mine" : "community"
+  const filter: FeedScope = searchParams.get("feed") === "mine" ? "mine" : "friends"
   const {
     data,
     fetchNextPage,
@@ -39,12 +39,13 @@ export default function Feed() {
     { getNextPageParam: (lastPage) => lastPage.nextCursor },
   )
   const posts = data?.pages.flatMap((page) => page.items) ?? []
+  const pinnedPosts = data?.pages[0]?.pinnedItems ?? []
 
   const setFilter = (value: string) => {
-    if (value !== "community" && value !== "mine") return
+    if (value !== "friends" && value !== "mine") return
 
     const nextSearchParams = new URLSearchParams(searchParams.toString())
-    if (value === "community") {
+    if (value === "friends") {
       nextSearchParams.delete("feed")
     } else {
       nextSearchParams.set("feed", value)
@@ -63,7 +64,7 @@ export default function Feed() {
           <div>
             <h1 id="feed-heading" className="text-xl font-semibold tracking-tight">Training feed</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Follow the latest momentum from your GymQuest community.
+              Follow the latest momentum from you and your GymQuest friends.
             </p>
           </div>
           <ToggleGroup
@@ -74,8 +75,8 @@ export default function Feed() {
             aria-label="Choose feed view"
             className="w-full sm:w-auto"
           >
-            <ToggleGroupItem value="community" className="flex-1 sm:flex-none">
-              Community
+            <ToggleGroupItem value="friends" className="flex-1 sm:flex-none">
+              Friends
             </ToggleGroupItem>
             <ToggleGroupItem value="mine" className="flex-1 sm:flex-none">
               My posts
@@ -86,9 +87,11 @@ export default function Feed() {
         <div className="flex flex-col gap-4" aria-label="News feed posts" aria-busy={isLoading || isFetchingNextPage}>
           {isLoading && <FeedSkeleton />}
 
-          {!isLoading && !isError && filter === "community" && posts.length === 0 && (
+          {!isLoading && !isError && filter === "friends" && posts.length === 0 && pinnedPosts.length === 0 && (
             <EmptyWelcomeMessage />
           )}
+
+          {!isLoading && pinnedPosts.map((post) => <FeedPost key={`pinned:${post.id}`} post={post} />)}
 
           {!isLoading && posts.map((post) => <FeedPost key={post.id} post={post} />)}
 

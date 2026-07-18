@@ -7,10 +7,11 @@ import BodySkeleton from "../_components/body-skeleton"
 import Header from "./_components/header"
 import Body from "./_components/body"
 import { useUserId } from "./_hooks/useUserId"
+import { notFound } from "next/navigation"
 
 export default function UserProfilePage () {
   const userId = useUserId()
-  const { isPending } = api.user.getUserById.useQuery(userId ? userId : skipToken)
+  const { isPending, isError } = api.user.getUserById.useQuery(userId ? userId : skipToken)
 
   if (isPending) {
     return (
@@ -20,6 +21,8 @@ export default function UserProfilePage () {
       </div>
     )
   }
+
+  if (isError) notFound()
 
   return (
     <div className="flex flex-col h-full px-10 py-6">

@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { WorkoutExperienceSummary } from "../_components/workout-experience-summary";
+import { WorkoutShareAction } from "../_components/workout-share-action";
 
 export default async function ActiveWorkoutSummary({
   params,
@@ -187,12 +188,15 @@ export default async function ActiveWorkoutSummary({
         )}
       </section>
 
-      <Button asChild variant="outline">
-        <Link href="/user/workouts">
-          <ArrowLeft />
-          Back to workouts
-        </Link>
-      </Button>
+      <div className="flex flex-wrap gap-3">
+        <Button asChild variant="outline">
+          <Link href="/user/workouts">
+            <ArrowLeft data-icon="inline-start" />
+            Back to workouts
+          </Link>
+        </Button>
+        <WorkoutShareAction sessionId={sessionId} />
+      </div>
     </div>
   );
 }

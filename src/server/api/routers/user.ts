@@ -17,7 +17,8 @@ import {
   friendShip, 
   friendRequest, 
 } from "@/server/db/schema/user";
-import { and, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { userBlock } from "@/server/db/schema/feed";
+import { and, eq, inArray, isNotNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { hashPassword } from "@/lib/hash";
 import { BORDER_RADIUS_ARRAY, COLOR_THEMES_ARRAY } from "@/variables/settings";
@@ -37,6 +38,7 @@ import { createSocketToken } from "@/server/socket/auth";
 import { provisionUserRecords } from "@/server/services/user-provisioning";
 import { getCtxUserId } from "@/server/utils/user";
 import sharp from "sharp";
+import { getBlockedUserIds } from "@/server/services/feed-access";
 
 type UserDetails = { email: string, password: string }
 
@@ -201,6 +203,17 @@ export const userRouter = createTRPCRouter({
   getUserById: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      const userId = getCtxUserId(ctx)
+      if (input !== userId) {
+        const blocked = await ctx.db.query.userBlock.findFirst({
+          where: or(
+            and(eq(userBlock.blockerId, userId), eq(userBlock.blockedId, input)),
+            and(eq(userBlock.blockerId, input), eq(userBlock.blockedId, userId)),
+          ),
+          columns: { blockerId: true },
+        })
+        if (blocked) throw new TRPCError({ code: "NOT_FOUND", message: "User not found." })
+      }
       return await ctx.db.query.users.findFirst({
         where: eq(users.id, input),
         columns: publicUserColumns,
@@ -218,10 +231,13 @@ export const userRouter = createTRPCRouter({
         })
       }
 
+      const blockedIds = await getBlockedUserIds(ctx.db, myUserId)
+
       return await ctx.db.query.users.findMany({
         where: and(
           ne(users.id, myUserId),
-          isNotNull(users.username)
+          isNotNull(users.username),
+          blockedIds.length ? notInArray(users.id, blockedIds) : undefined,
         ),
         columns: publicUserColumns,
       })
@@ -608,6 +624,16 @@ export const userRouter = createTRPCRouter({
         })
       }
 
+      const blocked = await ctx.db.query.userBlock.findFirst({
+        where: or(
+          and(eq(userBlock.blockerId, myUserId), eq(userBlock.blockedId, toUserId)),
+          and(eq(userBlock.blockerId, toUserId), eq(userBlock.blockedId, myUserId)),
+        ),
+      })
+      if (blocked) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Friend requests are unavailable for this user." })
+      }
+
       const existingPendingRequest = await ctx.db.query.friendRequest.findFirst({
         where: and(
           or(
@@ -675,6 +701,16 @@ export const userRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "You have no pending friend request from this user."
         })
+      }
+
+      const blocked = await ctx.db.query.userBlock.findFirst({
+        where: or(
+          and(eq(userBlock.blockerId, myUserId), eq(userBlock.blockedId, activeFriendRequest.fromUserId)),
+          and(eq(userBlock.blockerId, activeFriendRequest.fromUserId), eq(userBlock.blockedId, myUserId)),
+        ),
+      })
+      if (blocked) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This friend request can no longer be accepted." })
       }
 
       const updatedFriendRequest = await ctx.db.transaction(async (tx) => {
@@ -804,6 +840,54 @@ export const userRouter = createTRPCRouter({
       }
 
       await ctx.db.delete(friendRequest).where(eq(friendRequest.id, activeFriendRequest.id))
+    }),
+
+  getBlockedUsers: protectedProcedure.query(async ({ ctx }) => {
+    const userId = getCtxUserId(ctx)
+    const rows = await ctx.db.query.userBlock.findMany({
+      where: eq(userBlock.blockerId, userId),
+      orderBy: (table, { desc }) => [desc(table.createdAt)],
+      with: { blocked: { columns: publicUserColumns } },
+    })
+    return rows.map((row) => ({ ...row.blocked, blockedAt: row.createdAt }))
+  }),
+
+  blockUser: protectedProcedure
+    .input(z.string().uuid())
+    .mutation(async ({ ctx, input: blockedId }) => {
+      const blockerId = getCtxUserId(ctx)
+      if (blockerId === blockedId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot block yourself." })
+      }
+      const target = await ctx.db.query.users.findFirst({
+        where: eq(users.id, blockedId),
+        columns: { id: true },
+      })
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "User not found." })
+
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(userBlock).values({ blockerId, blockedId }).onConflictDoNothing()
+        await tx.delete(friendShip).where(or(
+          and(eq(friendShip.userOne, blockerId), eq(friendShip.userTwo, blockedId)),
+          and(eq(friendShip.userOne, blockedId), eq(friendShip.userTwo, blockerId)),
+        ))
+        await tx.delete(friendRequest).where(or(
+          and(eq(friendRequest.fromUserId, blockerId), eq(friendRequest.toUserId, blockedId)),
+          and(eq(friendRequest.fromUserId, blockedId), eq(friendRequest.toUserId, blockerId)),
+        ))
+      })
+      return { blocked: true }
+    }),
+
+  unblockUser: protectedProcedure
+    .input(z.string().uuid())
+    .mutation(async ({ ctx, input: blockedId }) => {
+      const blockerId = getCtxUserId(ctx)
+      await ctx.db.delete(userBlock).where(and(
+        eq(userBlock.blockerId, blockerId),
+        eq(userBlock.blockedId, blockedId),
+      ))
+      return { blocked: false }
     }),
 
   testSocketServer: protectedProcedure

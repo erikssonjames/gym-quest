@@ -5,7 +5,16 @@ import { accounts, friendRequest, friendShip, sessions, userPrivateInformation, 
 import { workout, workoutReview, workoutSession, workoutSessionLog, workoutSessionLogFragment, workoutSet, workoutSetCollection, workoutToUser } from "./workout"
 import { friendRequestNotification, notification, workoutReviewNotification } from "./notifications"
 import { badge, badgeProgress, badgeProgressEvent } from "./badges"
-import { feedPost } from "./feed"
+import {
+  feedPost,
+  feedPostComment,
+  feedPostHidden,
+  feedPostReaction,
+  feedPostReport,
+  feedQuestShare,
+  feedWorkoutShare,
+  userBlock,
+} from "./feed"
 import { aiUsageEvent, aiUsagePeriod, billingCustomer, billingEntitlement, billingPlan, billingPrice, billingSubscription, ownerRevenueLedger } from "./billing"
 import { weightEntry } from "./weight"
 import { experienceEvent, questClaim, workoutExperienceReview } from "./progression"
@@ -24,6 +33,12 @@ export const userRelations = relations(users, ({ many, one }) => ({
   userProfile: one(userProfile),
   badges: many(badgeProgress),
   feedPosts: many(feedPost),
+  feedComments: many(feedPostComment),
+  feedReactions: many(feedPostReaction),
+  feedReports: many(feedPostReport),
+  hiddenFeedPosts: many(feedPostHidden),
+  blockedUsers: many(userBlock, { relationName: "blocker" }),
+  blockedByUsers: many(userBlock, { relationName: "blocked" }),
   billingCustomer: one(billingCustomer),
   billingSubscriptions: many(billingSubscription),
   aiUsagePeriods: many(aiUsagePeriod),
@@ -133,11 +148,63 @@ export const friendRequestRelation = relations(friendRequest, ({ one }) => ({
 
 // Feed
 
-export const feedPostRelations = relations(feedPost, ({ one }) => ({
+export const feedPostRelations = relations(feedPost, ({ one, many }) => ({
   author: one(users, {
     fields: [feedPost.userId],
     references: [users.id]
-  })
+  }),
+  comments: many(feedPostComment),
+  reactions: many(feedPostReaction),
+  reports: many(feedPostReport),
+  hiddenFor: many(feedPostHidden),
+  workoutShare: one(feedWorkoutShare),
+  questShare: one(feedQuestShare),
+}))
+
+export const feedWorkoutShareRelations = relations(feedWorkoutShare, ({ one }) => ({
+  post: one(feedPost, { fields: [feedWorkoutShare.postId], references: [feedPost.id] }),
+  workoutSession: one(workoutSession, {
+    fields: [feedWorkoutShare.workoutSessionId],
+    references: [workoutSession.id],
+  }),
+}))
+
+export const feedQuestShareRelations = relations(feedQuestShare, ({ one }) => ({
+  post: one(feedPost, { fields: [feedQuestShare.postId], references: [feedPost.id] }),
+  questClaim: one(questClaim, { fields: [feedQuestShare.questClaimId], references: [questClaim.id] }),
+}))
+
+export const feedPostCommentRelations = relations(feedPostComment, ({ one }) => ({
+  post: one(feedPost, { fields: [feedPostComment.postId], references: [feedPost.id] }),
+  author: one(users, { fields: [feedPostComment.userId], references: [users.id] }),
+}))
+
+export const feedPostReactionRelations = relations(feedPostReaction, ({ one }) => ({
+  post: one(feedPost, { fields: [feedPostReaction.postId], references: [feedPost.id] }),
+  user: one(users, { fields: [feedPostReaction.userId], references: [users.id] }),
+}))
+
+export const feedPostReportRelations = relations(feedPostReport, ({ one }) => ({
+  post: one(feedPost, { fields: [feedPostReport.postId], references: [feedPost.id] }),
+  reporter: one(users, { fields: [feedPostReport.reporterId], references: [users.id] }),
+}))
+
+export const feedPostHiddenRelations = relations(feedPostHidden, ({ one }) => ({
+  post: one(feedPost, { fields: [feedPostHidden.postId], references: [feedPost.id] }),
+  user: one(users, { fields: [feedPostHidden.userId], references: [users.id] }),
+}))
+
+export const userBlockRelations = relations(userBlock, ({ one }) => ({
+  blocker: one(users, {
+    relationName: "blocker",
+    fields: [userBlock.blockerId],
+    references: [users.id],
+  }),
+  blocked: one(users, {
+    relationName: "blocked",
+    fields: [userBlock.blockedId],
+    references: [users.id],
+  }),
 }))
 
 // Badge

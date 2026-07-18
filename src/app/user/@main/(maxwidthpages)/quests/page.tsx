@@ -8,7 +8,9 @@ import {
   Dumbbell,
   Layers3,
   Loader2,
+  ExternalLink,
   ScrollText,
+  Share2,
   Sparkles,
   Target,
   Weight,
@@ -25,6 +27,7 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { api, type RouterOutputs } from "@/trpc/react"
+import { SharePostDialog } from "@/app/user/@main/_components/feed/share-post-dialog"
 
 type Quest = RouterOutputs["quests"]["getQuestBoard"]["quests"][number]
 
@@ -43,6 +46,7 @@ const questPresentations: Array<{
 export default function QuestsPage() {
   const utils = api.useUtils()
   const { data: board, isPending, isError } = api.quests.getQuestBoard.useQuery()
+  const { data: questShares } = api.feed.getMyQuestShares.useQuery()
   const [claimingQuestId, setClaimingQuestId] = useState<string>()
   const claimQuest = api.quests.claimQuest.useMutation({
     onSuccess: async ({ experienceAwarded }) => {
@@ -133,6 +137,9 @@ export default function QuestsPage() {
                   tone={presentation?.tone ?? "warning"}
                   isClaiming={claimingQuestId === quest.id}
                   onCollect={() => collectQuest(quest.id)}
+                  sharedPostId={quest.claimId
+                    ? questShares?.find((share) => share.questClaimId === quest.claimId)?.postId
+                    : undefined}
                 />
               )
             })}
@@ -149,12 +156,14 @@ function QuestCard({
   tone,
   isClaiming,
   onCollect,
+  sharedPostId,
 }: {
   quest: Quest
   icon: LucideIcon
   tone: "info" | "success" | "warning"
   isClaiming: boolean
   onCollect: () => void
+  sharedPostId?: string
 }) {
   const current = Math.min(quest.current, quest.target)
   const cadence = quest.cadence.charAt(0).toUpperCase() + quest.cadence.slice(1)
@@ -205,6 +214,27 @@ function QuestCard({
             {isClaiming ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Sparkles data-icon="inline-start" />}
             Claim +{quest.experience} XP
           </Button>
+        )}
+        {quest.claimed && quest.claimId && sharedPostId && (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/user/posts/${sharedPostId}`}>
+              <ExternalLink data-icon="inline-start" />
+              View post
+            </Link>
+          </Button>
+        )}
+        {quest.claimed && quest.claimId && !sharedPostId && (
+          <SharePostDialog
+            description={`Share ${quest.title} and the ${quest.experience.toLocaleString()} XP reward with your friends.`}
+            source={{ kind: "quest", questClaimId: quest.claimId }}
+            title="Share quest completion"
+            trigger={(
+              <Button size="sm" type="button" variant="outline">
+                <Share2 data-icon="inline-start" />
+                Share
+              </Button>
+            )}
+          />
         )}
       </CardFooter>
     </Card>

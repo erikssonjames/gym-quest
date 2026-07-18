@@ -23,13 +23,13 @@ export default function EmptyWelcomeMessage() {
         <div className="flex flex-col gap-2">
           <CardTitle className="text-xl leading-tight">Welcome to your training feed</CardTitle>
           <CardDescription className="leading-6">
-            Updates from your GymQuest community will appear here as people share their progress.
+            Updates from your GymQuest friends will appear here as they share their progress.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-0">
         <p className="text-sm leading-6 text-muted-foreground">
-          Start a workout or use the composer above to create the first update.
+          Add training friends, start a workout, or use the composer above to create the first update.
         </p>
       </CardContent>
       <CardFooter className="px-5 pb-5 pt-0">

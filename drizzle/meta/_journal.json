@@ -78,6 +78,13 @@
       "when": 1784390272603,
       "tag": "0010_workout_experience_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784397173464,
+      "tag": "0011_feed_social",
+      "breakpoints": true
     }
   ]
 }

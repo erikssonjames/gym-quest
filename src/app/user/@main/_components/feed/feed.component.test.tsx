@@ -34,7 +34,7 @@ describe("Feed", () => {
     mocks.replace.mockReset()
     mocks.searchParams = new URLSearchParams()
     mocks.useInfiniteQuery.mockReturnValue({
-      data: { pages: [{ items: [], nextCursor: undefined }] },
+      data: { pages: [{ pinnedItems: [], items: [], nextCursor: undefined }] },
       fetchNextPage: vi.fn(),
       hasNextPage: false,
       isError: false,
@@ -43,11 +43,11 @@ describe("Feed", () => {
     })
   })
 
-  test("loads the community feed by default", () => {
+  test("loads the friends feed by default", () => {
     render(<Feed />)
 
     expect(mocks.useInfiniteQuery).toHaveBeenCalledWith(
-      { limit: 10, scope: "community" },
+      { limit: 10, scope: "friends" },
       expect.objectContaining({ getNextPageParam: expect.any(Function) }),
     )
     expect(screen.getByText("Welcome to your training feed")).toBeInTheDocument()

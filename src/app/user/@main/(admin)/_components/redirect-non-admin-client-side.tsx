@@ -5,17 +5,14 @@ import { redirect } from "next/navigation"
 import { useLayoutEffect } from "react"
 
 export default function RedirectNonAdminClientSide () {
-  const session = useSession()
-
-  if (session.data?.user.role !== "admin") {
-
-  }
+  const { data: session, status } = useSession()
+  const role = session?.user.role
 
   useLayoutEffect(() => {
-    if (session.data?.user.role !== "admin") {
+    if (status === "authenticated" && (!role || !["admin", "superAdmin"].includes(role))) {
       redirect("/user")
     }
-  }, [session])
+  }, [role, status])
 
   return null
 }

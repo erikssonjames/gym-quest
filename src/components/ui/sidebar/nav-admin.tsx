@@ -20,7 +20,7 @@ export function NavAdmin({
 }) {
   const session = useSession()
 
-  if (session.data?.user.role !== "admin") return null
+  if (!session.data?.user.role || !["admin", "superAdmin"].includes(session.data.user.role)) return null
 
   return (
     <SidebarGroup>

@@ -7,6 +7,7 @@ import {
   CreditCard,
   Dumbbell,
   Home,
+  MessageSquareWarning,
   type LucideIcon,
   PersonStanding,
   Scale,
@@ -128,6 +129,11 @@ export const sidebarData: SidebarData = {
     },
   ],
   navAdmin: [
+    {
+      title: "Feed Moderation",
+      url: "/user/feed-moderation",
+      icon: MessageSquareWarning,
+    },
     {
       title: "XP Reviews",
       url: "/user/experience-reviews",

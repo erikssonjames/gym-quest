@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import PostContainer from "./post-container";
+import { PostImageField, type FeedImageInput } from "./post-image-field";
 
 const MAX_POST_LENGTH = 1000;
 
@@ -21,6 +22,7 @@ export default function PostComposer () {
   const { data: session } = useSession();
   const utils = api.useUtils();
   const [content, setContent] = useState("");
+  const [image, setImage] = useState<FeedImageInput | null>(null);
   const [open, setOpen] = useState(false);
 
   const displayName = session?.user.name ?? session?.user.email ?? "You";
@@ -36,6 +38,7 @@ export default function PostComposer () {
   const { mutate, isPending } = api.feed.createPost.useMutation({
     onSuccess: () => {
       setContent("");
+      setImage(null);
       setOpen(false);
       void utils.feed.getLatestPosts.invalidate();
       toast.success("Post added to the feed.");
@@ -71,8 +74,11 @@ export default function PostComposer () {
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!trimmedContent) return;
-                mutate({ content: trimmedContent });
+                if (!trimmedContent && !image) return;
+                mutate({
+                  description: trimmedContent || undefined,
+                  image: image ?? undefined,
+                });
               }}
             >
               <FieldGroup className="gap-3">
@@ -88,11 +94,12 @@ export default function PostComposer () {
                     autoFocus
                   />
                 </Field>
+                <PostImageField disabled={isPending} image={image} onChange={setImage} />
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">
                     {showCharacterCount ? `${remainingCharacters} characters left` : "Visible to your training circle."}
                   </p>
-                  <Button disabled={isPending || !trimmedContent} type="submit">
+                  <Button disabled={isPending || (!trimmedContent && !image)} type="submit">
                     {isPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Send data-icon="inline-start" />}
                     Post
                   </Button>
