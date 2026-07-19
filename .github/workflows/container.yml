@@ -5,34 +5,76 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
+
+concurrency:
+  group: container-main
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test semantic versioning
+        run: node --test scripts/semantic-version.test.mjs
+      - id: version
+        name: Resolve semantic version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          package_version="$(node scripts/semantic-version.mjs validate "$(node -p "require('./package.json').version")")"
+          version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          head_tag="$(git tag --points-at HEAD --list 'v*' --sort=-version:refname | grep -E "$version_pattern" | head -n 1 || true)"
+          latest_tag="$(git tag --merged HEAD --list 'v*' --sort=-version:refname | grep -E "$version_pattern" | head -n 1 || true)"
+
+          if [[ -n "$head_tag" ]]; then
+            version="${head_tag#v}"
+            release_type="existing"
+            should_tag="false"
+          elif [[ -z "$latest_tag" ]]; then
+            version="$package_version"
+            release_type="initial"
+            should_tag="true"
+          else
+            commit_log="$(git log "${latest_tag}..HEAD" --format='%B%x1e')"
+            release_type="$(printf '%s' "$commit_log" | node scripts/semantic-version.mjs classify)"
+            version="$(node scripts/semantic-version.mjs increment "${latest_tag#v}" "$release_type")"
+            should_tag="true"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release_type=$release_type" >> "$GITHUB_OUTPUT"
+          echo "should_tag=$should_tag" >> "$GITHUB_OUTPUT"
+          echo "Resolved $release_type release v$version"
       - id: image
         run: |
           short_sha="${GITHUB_SHA::7}"
-          package_version="$(node -p "require('./package.json').version")"
           echo "tag=main-$(date +%s)-${short_sha}" >> "$GITHUB_OUTPUT"
-          echo "version=${package_version}+${short_sha}" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           build-args: |
-            APP_VERSION=${{ steps.image.outputs.version }}
+            APP_VERSION=${{ steps.version.outputs.version }}
           tags: |
             ghcr.io/erikssonjames/gym-quest:${{ steps.image.outputs.tag }}
+            ghcr.io/erikssonjames/gym-quest:${{ steps.version.outputs.version }}
             ghcr.io/erikssonjames/gym-quest:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Tag release
+        if: steps.version.outputs.should_tag == 'true'
+        run: |
+          git tag "v${{ steps.version.outputs.version }}" "$GITHUB_SHA"
+          git push origin "v${{ steps.version.outputs.version }}"

@@ -13,7 +13,7 @@ RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-ARG APP_VERSION=development
+ARG APP_VERSION=1.0.0
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=4000

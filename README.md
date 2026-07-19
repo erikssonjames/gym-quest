@@ -75,6 +75,23 @@ Set `GYM_QUEST_DB_PORT` before running Compose to use another host port.
 Hosted PostgreSQL connections can still replace `DATABASE_URL` and set
 `DATABASE_SSL` to `true` or `require`.
 
+## Releases
+
+Production releases use semantic versions in `major.minor.patch` format. The
+container workflow starts from the latest `v*` Git tag and chooses the next
+number from the commits pushed to `main`:
+
+- Patch (`1.24.5` to `1.24.6`): `fix:` commits and other backwards-compatible
+  maintenance.
+- Minor (`1.24.5` to `1.25.0`): `feat:` or `minor:` commits.
+- Major (`1.24.5` to `2.0.0`): `type!:`, `BREAKING CHANGE:`, `major:`, or a
+  commit beginning with `Major refactor`.
+
+When several commits are pushed together, the highest applicable release type
+wins. A successful container publish creates the matching Git tag and publishes
+both the semantic image tag and `latest`. The initial release number comes from
+`package.json`.
+
 ## AI and subscriptions
 
 The workout planner calls Gemini only from the backend. Keep `GEMINI_API_KEY`

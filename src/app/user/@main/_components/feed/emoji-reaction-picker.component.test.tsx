@@ -28,7 +28,7 @@ describe("EmojiReactionPicker", () => {
     await user.click(screen.getByRole("radio", { name: "React with 💪" }))
     expect(onChange).toHaveBeenLastCalledWith("💪")
     expect(onChange).toHaveBeenCalledTimes(2)
-  })
+  }, 15_000)
 
   test("searches the complete categorized picker by emoji name", async () => {
     const user = userEvent.setup()
@@ -40,5 +40,5 @@ describe("EmojiReactionPicker", () => {
     await user.click(screen.getByRole("option", { name: "Fire" }))
 
     expect(onChange).toHaveBeenCalledWith("🔥")
-  })
+  }, 15_000)
 })

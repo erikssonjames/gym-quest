@@ -11,7 +11,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   await redirectIfNoSession()
 
   const { userSettings } = await api.user.getMe()
-  const appVersion = process.env.APP_VERSION ?? `${packageJson.version}-dev`
+  const appVersion = process.env.APP_VERSION || packageJson.version
 
   return (
     <UserSettingsProvider 
